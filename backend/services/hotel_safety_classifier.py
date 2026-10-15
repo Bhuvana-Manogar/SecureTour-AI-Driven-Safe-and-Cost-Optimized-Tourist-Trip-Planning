@@ -187,5 +187,9 @@ class HotelSafetyScorer:
                 "night_safety_score": crime_info.get("night_safety_score"),
                 "district_tourist_tier": crime_info.get("tourist_safety_tier")
             },
+            "image_url": hotel.get("image_url", "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"),
+            "amenities": hotel.get("amenities", []),
+            "reviews": reviews,
+            "review_count": hotel.get("review_count", 280),
             "reviews_analyzed_count": len(reviews)
         }
