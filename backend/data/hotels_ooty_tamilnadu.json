@@ -114,11 +114,201 @@
     ]
   },
   {
-    "id": "hotel-007",
-    "name": "Grand Palace Hotel & Spa (Yercaud / Salem Route)",
+    "id": "hotel-coorg-01",
+    "name": "Taj Madikeri Resort & Spa",
+    "district": "Kodagu",
+    "city": "Coorg",
+    "address": "1st Monnangeri, Galibeedu Road, Madikeri, Coorg 571201",
+    "star_rating": 4.9,
+    "review_count": 780,
+    "price_per_night": 18500,
+    "latitude": 12.4410,
+    "longitude": 75.7280,
+    "image_url": "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Armed Security", "CCTV Perimeter", "Doctor on Call", "Gated Rainforest Estate", "Secure Valet"],
+    "reviews": [
+      "World-class security in the heart of rainforest. The entry gate has biometric barrier, visitor logging and 24/7 guarded checkpoint.",
+      "Extremely safe for group travelers. Internal buggy escorts available 24 hours to take guests between villas and central lobby.",
+      "Electronic keycards, tamper-proof digital safes, and bright lighting across all estate pathways."
+    ]
+  },
+  {
+    "id": "hotel-coorg-02",
+    "name": "Club Mahindra Madikeri",
+    "district": "Kodagu",
+    "city": "Coorg",
+    "address": "Galibeedu Road, Madikeri, Karnataka 571201",
+    "star_rating": 4.4,
+    "review_count": 560,
+    "price_per_night": 7200,
+    "latitude": 12.4350,
+    "longitude": 75.7310,
+    "image_url": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security", "CCTV", "Emergency First Aid", "Private Enclosed Parking", "Doctor on Call"],
+    "reviews": [
+      "Outstanding security for family and friend groups. Security team checks all vehicle license plates at the barrier.",
+      "Well lit resort campus with clear walking trails. Front desk is responsive at all hours.",
+      "Electronic card keys on all suites. Felt completely safe during our 3-night coffee plantation trip."
+    ]
+  },
+  {
+    "id": "hotel-goa-01",
+    "name": "Taj Exotica Resort & Spa Goa",
+    "district": "South Goa",
+    "city": "Goa",
+    "address": "Calwaddo, Benaulim, Salcete, Goa 403716",
+    "star_rating": 4.9,
+    "review_count": 920,
+    "price_per_night": 22000,
+    "latitude": 15.2530,
+    "longitude": 73.9210,
+    "image_url": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Beach Security", "CCTV Grid", "Paramedic on Duty", "Private Beach Access", "Electronic Keycard"],
+    "reviews": [
+      "Top-tier safety in South Goa. Dedicated private security guards patrol the beach perimeter 24/7 keeping unauthorized touts away.",
+      "Our girl group felt completely secure walking on the private beach promenade late at night. Well lit with emergency call stations.",
+      "Double deadbolt locks, electronic room safes, and friendly professional hospitality."
+    ]
+  },
+  {
+    "id": "hotel-goa-02",
+    "name": "W Goa Beach Resort",
+    "district": "North Goa",
+    "city": "Goa",
+    "address": "Vagator Beach, Bardez, Goa 403509",
+    "star_rating": 4.7,
+    "review_count": 740,
+    "price_per_night": 17500,
+    "latitude": 15.5980,
+    "longitude": 73.7370,
+    "image_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security", "CCTV", "Safe Parking", "Electronic Locks", "Doctor on Call"],
+    "reviews": [
+      "Perched over Vagator cliff with strict perimeter access control. Security guards at main gate check every vehicle.",
+      "Felt very safe even arriving late from North Goa cafes. Well illuminated private access path.",
+      "Modern RFID door locks and reliable safe deposit boxes."
+    ]
+  },
+  {
+    "id": "hotel-manali-01",
+    "name": "The Himalayan Luxury Castle & Resort",
+    "district": "Kullu",
+    "city": "Manali",
+    "address": "Hadimba Road, Manali, Himachal Pradesh 175131",
+    "star_rating": 4.8,
+    "review_count": 610,
+    "price_per_night": 14000,
+    "latitude": 32.2470,
+    "longitude": 77.1820,
+    "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Mountain Security", "CCTV", "Heated Rooms", "Doctor on Call", "Safe Parking"],
+    "reviews": [
+      "High security Himalayan castle property. Gated boundary with round-the-clock guards at Hadimba Road entrance.",
+      "Clear safety advice regarding winter black ice and mountain snowfall. Reception staffed 24 hours.",
+      "Sturdy solid timber doors with dual deadbolts. Felt very secure during our high altitude trip."
+    ]
+  },
+  {
+    "id": "hotel-munnar-01",
+    "name": "Fragrant Nature Munnar",
+    "district": "Idukki",
+    "city": "Munnar",
+    "address": "Pothamedu, Munnar, Kerala 685612",
+    "star_rating": 4.7,
+    "review_count": 520,
+    "price_per_night": 9500,
+    "latitude": 10.0580,
+    "longitude": 77.0510,
+    "image_url": "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security", "CCTV", "Fire Sprinklers", "Private Parking", "Doctor on Call"],
+    "reviews": [
+      "Perched high on Pothamedu ridge with gated estate access. Security guards log incoming vehicles.",
+      "Very safe for friend groups. The cliffside walkways are reinforced with steel safety railings and floodlit.",
+      "Reliable digital keycard locks and responsive staff."
+    ]
+  },
+  {
+    "id": "hotel-kodai-01",
+    "name": "The Tamara Kodai",
+    "district": "Dindigul",
+    "city": "Kodaikanal",
+    "address": "St. Mary's Road, Kodaikanal, Tamil Nadu 624101",
+    "star_rating": 4.9,
+    "review_count": 760,
+    "price_per_night": 16000,
+    "latitude": 10.2310,
+    "longitude": 77.4920,
+    "image_url": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security", "CCTV", "Fire Safety", "Fenced Wildlife Barrier", "Heated Rooms"],
+    "reviews": [
+      "Gold standard for hill station safety. Electric safety fence prevents wildlife intrusion from adjacent reserve forest.",
+      "Comprehensive emergency response protocol with trained paramedic staff on 24-hour duty.",
+      "Every corner of the retreat is monitored, brightly lit, and staff are courteous and dependable."
+    ]
+  },
+  {
+    "id": "hotel-pondi-01",
+    "name": "Palais de Mahe - CGH Earth",
+    "district": "Puducherry",
+    "city": "Pondicherry",
+    "address": "4, Bussy Street, White Town, Puducherry 605001",
+    "star_rating": 4.8,
+    "review_count": 640,
+    "price_per_night": 13000,
+    "latitude": 11.9310,
+    "longitude": 79.8340,
+    "image_url": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security", "CCTV Grid", "Doctor on Call", "Safe Lockers", "Enclosed Courtyard"],
+    "reviews": [
+      "Located in the serene French White Town with well-lit streets and round-the-clock tourist police patrols.",
+      "Gated colonial archway with friendly professional night security guard. Women travelers felt completely safe walking to the promenade at 11 PM.",
+      "Solid electronic door locks and high safety consciousness from front desk."
+    ]
+  },
+  {
+    "id": "hotel-bangalore-01",
+    "name": "The Leela Palace Bengaluru",
+    "district": "Bangalore Urban",
+    "city": "Bangalore",
+    "address": "23, Old Airport Road, HAL 2nd Stage, Kodihalli, Bengaluru 560008",
+    "star_rating": 5.0,
+    "review_count": 1420,
+    "price_per_night": 16500,
+    "latitude": 12.9600,
+    "longitude": 77.6480,
+    "image_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Armed Security", "X-ray Baggage Scanner", "Full CCTV Grid", "Medical Bay", "Valet Parking"],
+    "reviews": [
+      "Ultra-high security palace hotel. Metal detectors, under-chassis vehicle scanners, and trained security personnel.",
+      "Extremely secure for traveling groups. Keycard elevator access restricted to guest room floors.",
+      "Tamper-proof digital safes, emergency medical team on site."
+    ]
+  },
+  {
+    "id": "hotel-chennai-01",
+    "name": "Taj Coromandel",
+    "district": "Chennai",
+    "city": "Chennai",
+    "address": "37, Mahatma Gandhi Road, Nungambakkam, Chennai, Tamil Nadu 600034",
+    "star_rating": 5.0,
+    "review_count": 1180,
+    "price_per_night": 12500,
+    "latitude": 13.0610,
+    "longitude": 80.2430,
+    "image_url": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "amenities": ["24/7 Security Guard", "Full CCTV Grid", "Emergency Doctor", "Valet Parking", "Electronic Keycard"],
+    "reviews": [
+      "Benchmark luxury and security in central Chennai. Rigorous vehicle and baggage screening at entrance.",
+      "Courteous staff, female guest safety escorts, and safe underground parking.",
+      "Double locking doors and 24-hour reception security desk."
+    ]
+  },
+  {
+    "id": "hotel-salem-01",
+    "name": "Grand Palace Hotel & Spa (Yercaud Route)",
     "district": "Salem",
     "city": "Salem",
-    "address": "Kilianur Falls Road, Yercaud, Salem District",
+    "address": "Kilianur Falls Road, Yercaud, Salem District 636601",
     "star_rating": 4.4,
     "review_count": 315,
     "price_per_night": 5500,
@@ -130,63 +320,6 @@
       "Stayed during transit from Chennai to Ooty. Huge gated premise with disciplined night security guards and metal detectors.",
       "Brightly illuminated courtyard and parking zone with high-resolution CCTV coverage.",
       "Front desk arranged an emergency puncture repair and checked our brakes before we continued the ghat journey."
-    ]
-  },
-  {
-    "id": "hotel-008",
-    "name": "Highway Oasis Motel & Rest Stop",
-    "district": "Ranipet",
-    "city": "Ranipet / Walajapet",
-    "address": "NH-48 Corridor, Ranipet, Tamil Nadu",
-    "star_rating": 3.2,
-    "review_count": 84,
-    "price_per_night": 1800,
-    "latitude": 12.9250,
-    "longitude": 79.3700,
-    "image_url": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
-    "amenities": ["Parking", "Restaurant", "Basic AC"],
-    "reviews": [
-      "Convenient for late night stopover on NH-48. However, parking is right on the dusty highway shoulder without a security boundary wall.",
-      "Truck drivers roaming nearby made the hallway feel intimidating for solo female guests. No security guard on duty after midnight.",
-      "Doors had flimsy latch locks. We stayed awake checking our car parked outside."
-    ]
-  },
-  {
-    "id": "hotel-009",
-    "name": "Radisson Blu Resort Temple Bay",
-    "district": "Chengalpattu",
-    "city": "Mamallapuram",
-    "address": "57 Covelong Road, Mamallapuram, Tamil Nadu",
-    "star_rating": 4.8,
-    "review_count": 840,
-    "price_per_night": 13500,
-    "latitude": 12.6270,
-    "longitude": 80.1980,
-    "image_url": "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
-    "amenities": ["24/7 Armed Security", "Full CCTV Grid", "Lifeguards on Beach", "Electronic Keycards", "Medical Bay"],
-    "reviews": [
-      "Extraordinary security. Even on the private beach stretch, resort security guards politely patrol and keep unauthorized outsiders away.",
-      "Extremely safe for girls trip. Golf carts available all night to escort guests to distant villas.",
-      "High tech card key access and tamper-proof room safes."
-    ]
-  },
-  {
-    "id": "hotel-010",
-    "name": "The Tamara Kodai (Hill Station Safety Benchmark)",
-    "district": "The Nilgiris / Western Ghats",
-    "city": "Kodaikanal / Nilgiri Outskirts",
-    "address": "St. Mary's Road, Western Ghats",
-    "star_rating": 4.9,
-    "review_count": 760,
-    "price_per_night": 16000,
-    "latitude": 11.4150,
-    "longitude": 76.7020,
-    "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80",
-    "amenities": ["24/7 Security", "CCTV", "Fire Safety", "Fenced Wildlife Barrier", "Heated Rooms"],
-    "reviews": [
-      "Gold standard for hill station safety. Electric safety fence prevents wildlife intrusion from adjacent reserve forest.",
-      "Comprehensive emergency response protocol with trained paramedic staff on 24-hour duty.",
-      "Every corner of the retreat is monitored, brightly lit, and staff are courteous and dependable."
     ]
   }
 ]

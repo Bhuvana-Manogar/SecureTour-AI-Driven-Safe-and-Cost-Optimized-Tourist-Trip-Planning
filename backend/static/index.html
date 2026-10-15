@@ -303,18 +303,66 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-xs font-bold text-[#3C4043] block mb-1">Source City</label>
-              <input id="woa-source" type="text" value="Chennai" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-bold text-[#3C4043]">Source City</label>
+                <button type="button" onclick="useLiveBrowserLocation()" class="text-[10px] font-extrabold text-[#1A73E8] hover:underline flex items-center gap-0.5" title="Use your actual device GPS location">
+                  <span>📍 GPS</span>
+                </button>
+              </div>
+              <input id="woa-source" type="text" value="Chennai" oninput="onSourceOrDestInput()" placeholder="e.g. Chennai" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
             </div>
             <div>
-              <label class="text-xs font-bold text-[#3C4043] block mb-1">Destination City</label>
-              <input id="woa-destination" type="text" value="Ooty" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-bold text-[#3C4043]">Destination City</label>
+                <span class="text-[10px] font-bold text-[#5F6368]">Any Destination</span>
+              </div>
+              <input id="woa-destination" type="text" value="Ooty" oninput="onSourceOrDestInput()" placeholder="e.g. Ooty, Coorg, Goa" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+            </div>
+          </div>
+
+          <!-- Dynamic Live Distance Banner -->
+          <div id="dynamic-distance-banner" class="bg-blue-50/90 border border-blue-200/90 rounded-2xl p-2.5 flex items-center justify-between text-xs transition-all">
+            <div class="flex items-center gap-2">
+              <span id="dist-calc-spinner" class="hidden animate-spin w-3.5 h-3.5 border-2 border-[#1A73E8] border-t-transparent rounded-full"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#1E8E3E] animate-pulse"></span>
+              <div>
+                <span class="text-[10px] uppercase font-bold text-blue-700 block leading-tight">Live Driving Distance (OSRM)</span>
+                <span id="route-distance-summary" class="font-extrabold text-[#1557B0]">540.0 km • ~9.5 hrs driving</span>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+              Auto-Synced
+            </span>
+          </div>
+
+          <!-- Quick Preset Corridors (Instant 1-Click Dynamic Test) -->
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#5F6368] block mb-1.5">Popular Indian Travel Corridors:</span>
+            <div class="flex flex-wrap gap-1.5 text-[11px]">
+              <button type="button" onclick="setTripCorridor('Chennai', 'Ooty', 540, 4, 48000)" class="corridor-quick-btn px-2.5 py-1 rounded-xl bg-[#F1F3F4] hover:bg-blue-50 hover:text-[#1A73E8] font-bold text-[#3C4043] border border-slate-200 transition-colors">
+                Chennai ➔ Ooty
+              </button>
+              <button type="button" onclick="setTripCorridor('Bangalore', 'Coorg', 255, 3, 32000)" class="corridor-quick-btn px-2.5 py-1 rounded-xl bg-[#F1F3F4] hover:bg-blue-50 hover:text-[#1A73E8] font-bold text-[#3C4043] border border-slate-200 transition-colors">
+                Bangalore ➔ Coorg
+              </button>
+              <button type="button" onclick="setTripCorridor('Mumbai', 'Goa', 585, 5, 55000)" class="corridor-quick-btn px-2.5 py-1 rounded-xl bg-[#F1F3F4] hover:bg-blue-50 hover:text-[#1A73E8] font-bold text-[#3C4043] border border-slate-200 transition-colors">
+                Mumbai ➔ Goa
+              </button>
+              <button type="button" onclick="setTripCorridor('Delhi', 'Manali', 520, 5, 52000)" class="corridor-quick-btn px-2.5 py-1 rounded-xl bg-[#F1F3F4] hover:bg-blue-50 hover:text-[#1A73E8] font-bold text-[#3C4043] border border-slate-200 transition-colors">
+                Delhi ➔ Manali
+              </button>
+              <button type="button" onclick="setTripCorridor('Coimbatore', 'Munnar', 155, 3, 28000)" class="corridor-quick-btn px-2.5 py-1 rounded-xl bg-[#F1F3F4] hover:bg-blue-50 hover:text-[#1A73E8] font-bold text-[#3C4043] border border-slate-200 transition-colors">
+                Coimbatore ➔ Munnar
+              </button>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-xs font-bold text-[#3C4043] block mb-1">One-Way Distance (km)</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-bold text-[#3C4043]">One-Way Distance (km)</label>
+                <span class="text-[10px] font-bold text-[#1E8E3E]">⚡ Auto</span>
+              </div>
               <input id="woa-distance" type="number" min="10" max="5000" value="540" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
             </div>
             <div>
@@ -390,25 +438,46 @@
         </div>
       </div>
 
-      <!-- Filters Bar -->
-      <div class="flex flex-wrap items-center justify-between gap-4 bg-white border border-[#E8EAED] rounded-2xl p-4 text-xs shadow-sm">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-[#5F6368] uppercase tracking-wider">Destination:</span>
-          <div class="flex gap-1.5" id="hotel-city-filters">
-            <button onclick="filterHotelsCity('')" class="hotel-city-btn active px-3.5 py-1.5 rounded-xl bg-[#1A73E8] text-white font-bold shadow-sm">All Stays</button>
-            <button onclick="filterHotelsCity('Ooty')" class="hotel-city-btn px-3.5 py-1.5 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold">Ooty</button>
-            <button onclick="filterHotelsCity('Coonoor')" class="hotel-city-btn px-3.5 py-1.5 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold">Coonoor</button>
-            <button onclick="filterHotelsCity('Salem')" class="hotel-city-btn px-3.5 py-1.5 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold">Salem</button>
+      <!-- Dynamic Stays Search & Filters Bar -->
+      <div class="bg-white border border-[#E8EAED] rounded-3xl p-5 shadow-sm space-y-3">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <!-- Real-Time Destination Search Input -->
+          <div class="flex-1 max-w-md relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5F6368]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <input id="hotel-search-city" type="text" placeholder="Search destination (e.g. Ooty, Coorg, Goa, Manali, Munnar)..." oninput="onHotelSearchInput(this.value)" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-[#5F6368]">Min Safety Index:</span>
+            <select id="hotel-min-safety" onchange="filterHotelsSafety(this.value)" class="bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8]">
+              <option value="0">All Safety Scores</option>
+              <option value="70">Verified Safe (70%+)</option>
+              <option value="85">High Safety Havens (85%+)</option>
+            </select>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-[#5F6368] font-bold">Min Safety Index:</span>
-          <select id="hotel-min-safety" onchange="filterHotelsSafety(this.value)" class="bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-1.5 text-[#202124] font-bold focus:outline-none focus:border-[#1A73E8]">
-            <option value="0">All Safety Scores</option>
-            <option value="70">Verified Safe (70%+)</option>
-            <option value="85">High Safety Havens (85%+)</option>
-          </select>
+        <!-- Quick Destination Pills -->
+        <div class="flex flex-wrap items-center justify-between pt-2 border-t border-[#F1F3F4] gap-2">
+          <div class="flex flex-wrap items-center gap-1.5" id="hotel-city-filters">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#5F6368] mr-1">Popular Cities:</span>
+            <button onclick="filterHotelsCity('')" class="hotel-city-btn active px-3 py-1 rounded-xl bg-[#1A73E8] text-white font-bold text-xs shadow-sm">All Stays</button>
+            <button onclick="filterHotelsCity('Ooty')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Ooty</button>
+            <button onclick="filterHotelsCity('Coorg')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Coorg</button>
+            <button onclick="filterHotelsCity('Goa')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Goa</button>
+            <button onclick="filterHotelsCity('Manali')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Manali</button>
+            <button onclick="filterHotelsCity('Munnar')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Munnar</button>
+            <button onclick="filterHotelsCity('Pondicherry')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Pondicherry</button>
+            <button onclick="filterHotelsCity('Bangalore')" class="hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs">Bangalore</button>
+          </div>
+
+          <!-- Current City Badge -->
+          <div id="hotel-searched-badge" class="text-xs font-bold text-[#1A73E8] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#1E8E3E]"></span>
+            <span id="hotel-active-city-label">Showing Verified Stays in Ooty</span>
+          </div>
         </div>
       </div>
 
@@ -452,32 +521,27 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
 
-            <!-- Map Layers with Explanatory Tooltips -->
-            <div class="flex items-center gap-1 bg-[#F1F3F4] p-1 rounded-xl border border-[#DADCE0] text-[11px] font-bold text-[#3C4043]">
-              <button onclick="setMapLayer('street')" id="layer-btn-street" class="px-2.5 py-1 rounded-lg bg-white text-[#1A73E8] shadow-sm" title="Google-style clear street view with roads, highways & towns">
-                🗺️ Street
-              </button>
-              <button onclick="setMapLayer('satellite')" id="layer-btn-satellite" class="px-2.5 py-1 rounded-lg hover:text-[#202124]" title="Real aerial satellite photography showing terrain & ghat curves">
-                🛰️ Satellite
-              </button>
-              <button onclick="setMapLayer('night')" id="layer-btn-night" class="px-2.5 py-1 rounded-lg hover:text-[#202124]" title="High-contrast dark navigation mode for driving at night">
-                🌙 Night
-              </button>
-              <button onclick="setMapLayer('terrain')" id="layer-btn-terrain" class="px-2.5 py-1 rounded-lg hover:text-[#202124]" title="Topographic elevation contours & mountain slope contours">
-                ⛰️ Terrain
-              </button>
+            <!-- Live Device GPS Locator Button (HTML5 Geolocation) -->
+            <button onclick="useLiveBrowserLocation()" id="btn-live-gps" class="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#1A73E8] border border-blue-200 shadow-sm transition-all" title="Center map on your real live device GPS location">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#1A73E8] animate-ping"></span>
+              <span id="live-gps-btn-text">📍 Use My Live GPS</span>
+            </button>
+
+            <!-- Pure Google Maps Layer Badge (Clean Street Navigation Only) -->
+            <div class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F1F3F4] text-[#202124] text-xs font-bold border border-[#DADCE0]">
+              <span class="w-2 h-2 rounded-full bg-[#1E8E3E]"></span>
+              <span>Google Maps View</span>
             </div>
           </div>
         </div>
 
-        <!-- Map Layer Explanatory Badge & Telemetry Bar -->
+        <!-- Google Maps Telemetry Bar -->
         <div class="flex flex-wrap items-center justify-between text-xs text-[#5F6368] pt-2 border-t border-[#F1F3F4] gap-2">
           
-          <!-- Explanatory note describing active map layer -->
           <div class="flex items-center gap-2">
             <span class="p-1 rounded bg-blue-50 text-[#1A73E8] font-bold text-[10px]">Active Layer:</span>
             <span id="map-layer-explanation" class="font-medium text-[#202124]">
-              Google-Style Street Map: Shows high-contrast highways (NH-48, NH-44, NH-544, NH-181), street names & town labels.
+              Google Maps Clean Navigation: High-contrast highway corridors (NH-48, NH-44, NH-544, NH-181) with live turn maneuvers & hazard radar.
             </span>
           </div>
 
@@ -701,10 +765,15 @@
               Log shared fuel, hotel bookings, dining, and sightseeing passes. Our algorithm condenses dozens of tangled debts into the absolute minimum payments with instant 1-click UPI transfers (GPay / PhonePe / Paytm).
             </p>
           </div>
-          <button onclick="openAddExpenseModal()" class="px-5 py-3 rounded-2xl bg-white text-teal-800 hover:bg-teal-50 font-extrabold text-xs shadow-md flex items-center gap-2 transition-all transform active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>+ Add Group Expense</span>
-          </button>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="openAddExpenseModal()" class="px-4 py-2.5 rounded-2xl bg-white text-teal-800 hover:bg-teal-50 font-extrabold text-xs shadow-md flex items-center gap-2 transition-all transform active:scale-95">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>+ Add Group Expense</span>
+            </button>
+            <button onclick="triggerCompleteTripModal()" class="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs shadow-md flex items-center gap-2 transition-all transform active:scale-95">
+              <span>🏁 Complete & Settle Trip</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1019,6 +1088,62 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TRIP COMPLETED & ARCHIVED SUMMARY -->
+  <div id="trip-complete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-white border-2 border-emerald-500 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl">
+      
+      <!-- Top Celebration Header -->
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-3xl shadow-md shadow-emerald-500/20">
+          🏆
+        </div>
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-50 text-emerald-800 border border-emerald-200">
+          Trip Completed & Archived
+        </span>
+        <h3 class="text-2xl font-black text-[#202124]">All Debts Settled & Safe Return Confirmed!</h3>
+        <p class="text-xs text-[#5F6368] max-w-md mx-auto">
+          Every group member has returned safely, all shared expenses are reconciled, and outstanding payments are finalized.
+        </p>
+      </div>
+
+      <!-- Financial Metrics Box -->
+      <div class="grid grid-cols-3 gap-3 bg-[#F8F9FA] border border-[#E8EAED] rounded-2xl p-4 text-center">
+        <div>
+          <span class="text-[10px] font-bold text-[#5F6368] uppercase block">Total Trip Spent</span>
+          <span id="complete-total-spent" class="text-lg font-black text-[#202124] font-mono">₹31,250</span>
+        </div>
+        <div>
+          <span class="text-[10px] font-bold text-[#5F6368] uppercase block">Expenses Logged</span>
+          <span id="complete-expenses-count" class="text-lg font-black text-[#1A73E8] font-mono">5</span>
+        </div>
+        <div>
+          <span class="text-[10px] font-bold text-[#5F6368] uppercase block">Settlements Paid</span>
+          <span id="complete-settlements-count" class="text-lg font-black text-[#1E8E3E] font-mono">3 / 3</span>
+        </div>
+      </div>
+
+      <!-- Member Final Ledger List -->
+      <div class="space-y-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-[#5F6368] block">Group Member Settlement Status:</span>
+        <div id="complete-members-ledger" class="space-y-2 max-h-48 overflow-y-auto pr-1 steps-scroll">
+          <!-- Populated dynamically via app.js -->
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2 pt-2">
+        <button onclick="downloadTripSummaryReport()" class="flex-1 py-3 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Trip Report</span>
+        </button>
+        <button onclick="closeCompleteTripModal()" class="px-5 py-3 rounded-2xl bg-[#F1F3F4] hover:bg-[#E8EAED] text-[#3C4043] font-bold text-xs transition-colors">
+          Close
+        </button>
+      </div>
+
     </div>
   </div>
 

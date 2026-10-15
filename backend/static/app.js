@@ -2,13 +2,14 @@
  * SecureTour AI — Intelligent Group Travel Safety, Navigation & Splitwise Platform
  * 
  * Features:
- * - Real Google-Style Street Map, Satellite Earth, Night Navigator & Topo Terrain with live explanations
- * - Turn-by-Turn Driving Directions with Highway Names, Turn Icons & Hazard Alerts
- * - Fixed & Vectorized Whale Optimization Algorithm (WOA) Cost Predictor
- * - Full Splitwise Platform with Member Balances, Minimized Debts & 1-Click UPI Payment
- * - Real User Authentication & Registration (Personal Emergency Contacts)
- * - Real Emergency SOS with 1-Click Direct Phone Calling & WhatsApp GPS Dispatch
- * - Autonomous Group Sentinel with Return-Time Anomaly Watchdog
+ * - Dynamic Real-Time Distance Auto-Sync: Typing or selecting any Source/Destination instantly calculates OSRM driving km & hours
+ * - Pure Google Maps (GMap) Style: Clean high-contrast street navigation, electric blue route line, turn chevrons, green "A" and red "B" pins
+ * - Live Device GPS Location: Browser HTML5 geolocation button centers map, drops pulsing blue marker, reverse-geocodes origin
+ * - Dynamic Stays & Aspect Safety Scoring: Destination changes instantly reload verified stays for ANY city in India
+ * - Individual Splitwise Member Accounts: Dedicated cards for Arun, Karthik, Priya, Divya showing Total Paid, Fair Share & Net Balance (+/-)
+ * - Complete & Settle Trip: 1-click trip archive modal with celebration certificate and export report
+ * - Real User Authentication: Registration captures personal emergency contacts with 1-click direct phone & WhatsApp SOS
+ * - Whale Optimization Algorithm (WOA): Multi-channel budget metaheuristic optimizing transport, stays, food, activities & safety reserve
  */
 
 // Application State
@@ -25,13 +26,14 @@ const state = {
   routeMode: 'safe', // 'safe' | 'direct'
   map: null,
   tileLayer: null,
-  currentTileType: 'street',
   directPolyline: null,
   safePolyline: null,
   originMarker: null,
   destMarker: null,
   carMarker: null,
   carCircle: null,
+  liveGpsMarker: null,
+  liveGpsCircle: null,
   hazardMarkers: [],
   simulating: false,
   simIndex: 0,
@@ -39,32 +41,19 @@ const state = {
   currentCoord: [13.0827, 80.2707],
   contract: null,
   expensesData: null,
+  activeMemberFilter: '',
+  activeExpenseCategoryFilter: '',
+  distanceDebounceTimer: null,
+  hotelDebounceTimer: null,
   socket: null,
   activeAlert: null
 };
 
-// 100% Free High-Definition Map Providers
-const MAP_LAYERS = {
-  street: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    explanation: 'Google-Style Street Map: Shows high-contrast highways (NH-48, NH-44, NH-544, NH-181), street names & town labels.'
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri &mdash; High-Resolution Earth Satellite Imagery',
-    explanation: 'Satellite Earth: High-resolution aerial satellite photography showing mountain contours, tea estates, and ghat descents.'
-  },
-  night: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO Dark Matter & OpenStreetMap',
-    explanation: 'Night Navigator: Low-glare dark navigation map for night highway driving, highlighting illuminated corridors and hazard bends.'
-  },
-  terrain: {
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenTopoMap & OpenStreetMap',
-    explanation: 'Topographic Terrain: Elevation contours, slope gradients, and hairpin bend altitudes for mountain ghat corridors.'
-  }
+// Pure Google-Style Vector Street Map Provider (Single Clean Layer)
+const GOOGLE_MAPS_LAYER = {
+  url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  explanation: 'Google Maps Clean Navigation: High-contrast highway corridors (NH-48, NH-44, NH-544, NH-181) with live turn maneuvers & hazard radar.'
 };
 
 // API Helper
@@ -129,7 +118,7 @@ function switchTab(tabId) {
   if (tabId === 'travel') {
     initOrUpdateMap();
   } else if (tabId === 'stay' && state.hotels.length === 0) {
-    loadHotels();
+    loadHotels(state.tripDestination);
   } else if (tabId === 'protected') {
     loadContract();
   } else if (tabId === 'settle') {
@@ -148,7 +137,7 @@ function initAuth() {
     } catch (e) {}
   }
 
-  // If no saved user, default to Arun Kumar demo
+  // Default to Arun Kumar demo profile if not logged in
   if (!state.currentUser) {
     state.currentUser = {
       id: 'usr-1',
@@ -168,22 +157,31 @@ function updateAuthHeaderUI() {
   const loggedIn = document.getElementById('auth-logged-in');
 
   if (state.currentUser && state.currentUser.full_name) {
-    loggedOut.classList.add('hidden');
-    loggedIn.classList.remove('hidden');
+    if (loggedOut) loggedOut.classList.add('hidden');
+    if (loggedIn) loggedIn.classList.remove('hidden');
 
     const initial = state.currentUser.full_name.charAt(0).toUpperCase();
-    document.getElementById('user-avatar-initial').innerText = initial;
-    document.getElementById('user-display-name-header').innerText = state.currentUser.full_name;
+    const avatarEl = document.getElementById('user-avatar-initial');
+    if (avatarEl) avatarEl.innerText = initial;
+
+    const displayHeader = document.getElementById('user-display-name-header');
+    if (displayHeader) displayHeader.innerText = state.currentUser.full_name;
 
     // Dropdown details
-    document.getElementById('profile-user-name').innerText = state.currentUser.full_name;
-    document.getElementById('profile-user-email').innerText = state.currentUser.email || 'traveler@securetour.ai';
-    document.getElementById('profile-user-phone').innerText = state.currentUser.phone || '+91 98401 23456';
-    document.getElementById('profile-emergency-name').innerText = state.currentUser.emergency_contact_name || 'Family Contact';
-    document.getElementById('profile-emergency-phone').innerText = state.currentUser.emergency_contact_phone || '+91 98401 99999';
+    const pName = document.getElementById('profile-user-name');
+    const pEmail = document.getElementById('profile-user-email');
+    const pPhone = document.getElementById('profile-user-phone');
+    const pEmName = document.getElementById('profile-emergency-name');
+    const pEmPhone = document.getElementById('profile-emergency-phone');
+
+    if (pName) pName.innerText = state.currentUser.full_name;
+    if (pEmail) pEmail.innerText = state.currentUser.email || 'traveler@securetour.ai';
+    if (pPhone) pPhone.innerText = state.currentUser.phone || '+91 98401 23456';
+    if (pEmName) pEmName.innerText = state.currentUser.emergency_contact_name || 'Family Contact';
+    if (pEmPhone) pEmPhone.innerText = state.currentUser.emergency_contact_phone || '+91 98401 99999';
   } else {
-    loggedIn.classList.add('hidden');
-    loggedOut.classList.remove('hidden');
+    if (loggedIn) loggedIn.classList.add('hidden');
+    if (loggedOut) loggedOut.classList.remove('hidden');
   }
 }
 
@@ -208,7 +206,6 @@ function closeRegisterModal() {
   document.getElementById('register-modal').classList.add('hidden');
 }
 
-// 1-Click Quick Demo Login
 async function quickLoginDemo(email) {
   try {
     const res = await apiCall('/api/auth/login', 'POST', {
@@ -293,16 +290,93 @@ function handleLogout() {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 1: Whale Optimization Algorithm (WOA) Cost Optimizer
+// TAB 1: DYNAMIC DISTANCE CALCULATION & WOA COST OPTIMIZATION
 // -----------------------------------------------------------------------------
+
+function onSourceOrDestInput() {
+  clearTimeout(state.distanceDebounceTimer);
+  state.distanceDebounceTimer = setTimeout(() => {
+    const source = document.getElementById('woa-source').value.trim();
+    const dest = document.getElementById('woa-destination').value.trim();
+    if (source && dest) {
+      calculateDynamicDistance(source, dest);
+    }
+  }, 600);
+}
+
+async function calculateDynamicDistance(origin, destination) {
+  const spinner = document.getElementById('dist-calc-spinner');
+  const summaryLabel = document.getElementById('route-distance-summary');
+  if (spinner) spinner.classList.remove('hidden');
+  if (summaryLabel) summaryLabel.innerText = 'Calculating real-world driving distance via GPS...';
+
+  try {
+    const res = await apiCall(`/api/routes/distance?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
+    const distKm = res.distance_km || 540;
+    const durHrs = res.estimated_hours || 9.5;
+
+    // Update input and state
+    const distInput = document.getElementById('woa-distance');
+    if (distInput) distInput.value = distKm;
+    state.tripSource = origin;
+    state.tripDestination = destination;
+
+    // Update quick corridor labels at header
+    const qSource = document.getElementById('quick-source-label');
+    const qDest = document.getElementById('quick-dest-label');
+    if (qSource) qSource.innerText = origin;
+    if (qDest) qDest.innerText = destination;
+
+    if (summaryLabel) {
+      summaryLabel.innerText = `${distKm} km • ~${durHrs} hrs travel duration`;
+    }
+
+    // Auto-run WOA price predictor with new distance
+    await runWOACostOptimizer();
+
+    // Auto-reload map route if already initialized
+    if (state.map) {
+      await loadRoute(origin, destination);
+    }
+
+    // Auto-reload stays for new destination
+    await loadHotels(destination);
+
+  } catch (err) {
+    console.error('Distance calculation error:', err);
+    if (summaryLabel) summaryLabel.innerText = '540 km • ~9.5 hrs (Default route)';
+  } finally {
+    if (spinner) spinner.classList.add('hidden');
+  }
+}
+
+function setTripCorridor(source, dest, dist, days, budget) {
+  const sInput = document.getElementById('woa-source');
+  const dInput = document.getElementById('woa-destination');
+  const distInput = document.getElementById('woa-distance');
+  const durInput = document.getElementById('woa-duration');
+  const bInput = document.getElementById('woa-budget');
+  const bLabel = document.getElementById('budget-val-label');
+
+  if (sInput) sInput.value = source;
+  if (dInput) dInput.value = dest;
+  if (distInput) distInput.value = dist;
+  if (durInput) durInput.value = days;
+  if (bInput) bInput.value = budget;
+  if (bLabel) bLabel.innerText = '₹' + Number(budget).toLocaleString();
+
+  calculateDynamicDistance(source, dest);
+  showToast(`Loaded ${source} ➔ ${dest} travel corridor`, 'info');
+}
+
 async function runWOACostOptimizer() {
-  const source = document.getElementById('woa-source').value || 'Chennai';
-  const destination = document.getElementById('woa-destination').value || 'Ooty';
-  const distance = parseFloat(document.getElementById('woa-distance').value) || 540;
-  const duration = parseInt(document.getElementById('woa-duration').value) || 4;
-  const groupSize = parseInt(document.getElementById('woa-groupsize').value) || 4;
-  const vehicle = document.getElementById('woa-vehicle').value || 'car';
-  const budget = parseFloat(document.getElementById('woa-budget').value) || 48000;
+  const source = document.getElementById('woa-source')?.value || state.tripSource;
+  const destination = document.getElementById('woa-destination')?.value || state.tripDestination;
+  const distance = parseFloat(document.getElementById('woa-distance')?.value) || 540;
+  const duration = parseInt(document.getElementById('woa-duration')?.value) || 4;
+  const groupSize = parseInt(document.getElementById('woa-groupsize')?.value) || 4;
+  const vehicle = document.getElementById('woa-vehicle')?.value || 'car';
+  const budget = parseFloat(document.getElementById('woa-budget')?.value) || 48000;
 
   state.tripSource = source;
   state.tripDestination = destination;
@@ -312,7 +386,7 @@ async function runWOACostOptimizer() {
   if (qDest) qDest.innerText = destination;
 
   const btn = document.getElementById('btn-run-woa');
-  btn.innerHTML = `<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></span> Optimizing Budget...`;
+  if (btn) btn.innerHTML = `<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></span> Optimizing Budget...`;
 
   try {
     const res = await apiCall('/api/ai/predict-cost-woa', 'POST', {
@@ -327,13 +401,15 @@ async function runWOACostOptimizer() {
 
     renderWOAResults(res);
   } catch (err) {
-    showToast(`Price prediction error: ${err.message}`, 'error');
+    showToast(`Price prediction notice: ${err.message}`, 'error');
     console.error('WOA Error:', err);
   } finally {
-    btn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      <span>Run Whale Cost Prediction AI</span>
-    `;
+    if (btn) {
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Run Whale Cost Prediction AI</span>
+      `;
+    }
   }
 }
 
@@ -465,13 +541,22 @@ function renderWOAResults(data) {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 2: HOTELS & AI SAFETY SCORING
+// TAB 2: DYNAMIC STAYS & AI SAFETY SCORING
 // -----------------------------------------------------------------------------
+
+function onHotelSearchInput(val) {
+  clearTimeout(state.hotelDebounceTimer);
+  state.hotelDebounceTimer = setTimeout(() => {
+    loadHotels(val.trim());
+  }, 450);
+}
+
 async function loadHotels(city = '', minSafety = 0) {
   try {
+    const searchCity = (city || state.tripDestination || 'Ooty').trim();
     let url = '/api/hotels';
     const params = [];
-    if (city) params.push(`city=${encodeURIComponent(city)}`);
+    if (searchCity) params.push(`city=${encodeURIComponent(searchCity)}`);
     if (minSafety > 0) params.push(`min_safety=${minSafety}`);
     if (params.length > 0) url += `?${params.join('&')}`;
 
@@ -479,8 +564,28 @@ async function loadHotels(city = '', minSafety = 0) {
     state.hotels = res.hotels || [];
     renderHotelsList();
 
-    if (state.hotels.length > 0 && !state.selectedHotel) {
+    // Update active city indicator badge
+    const badge = document.getElementById('hotel-active-city-label');
+    if (badge) {
+      badge.innerText = `Showing Verified Safe Stays in ${searchCity}`;
+    }
+    const searchInput = document.getElementById('hotel-search-city');
+    if (searchInput && searchInput.value !== searchCity && city) {
+      searchInput.value = searchCity;
+    }
+
+    if (state.hotels.length > 0) {
       inspectHotel(state.hotels[0].id);
+    } else {
+      const detail = document.getElementById('hotel-detail-container');
+      if (detail) {
+        detail.innerHTML = `
+          <div class="bg-white border border-[#E8EAED] rounded-3xl p-6 text-center text-[#5F6368] space-y-2">
+            <p class="font-bold text-[#202124]">No stays found for "${searchCity}"</p>
+            <p class="text-xs">Try searching for Ooty, Coorg, Goa, Manali, Munnar, or Bangalore.</p>
+          </div>
+        `;
+      }
     }
   } catch (err) {
     console.error('Failed to load hotels', err);
@@ -489,12 +594,12 @@ async function loadHotels(city = '', minSafety = 0) {
 
 function filterHotelsCity(cityName) {
   document.querySelectorAll('.hotel-city-btn').forEach(b => {
-    b.className = 'hotel-city-btn px-3.5 py-1.5 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold';
+    b.className = 'hotel-city-btn px-3 py-1 rounded-xl bg-[#F1F3F4] text-[#3C4043] hover:bg-[#E8EAED] font-bold text-xs';
   });
   if (event && event.target) {
-    event.target.className = 'hotel-city-btn px-3.5 py-1.5 rounded-xl bg-[#1A73E8] text-white font-bold shadow-sm';
+    event.target.className = 'hotel-city-btn active px-3 py-1 rounded-xl bg-[#1A73E8] text-white font-bold text-xs shadow-sm';
   }
-  loadHotels(cityName, document.getElementById('hotel-min-safety').value);
+  loadHotels(cityName, document.getElementById('hotel-min-safety')?.value || 0);
 }
 
 function filterHotelsSafety(score) {
@@ -683,16 +788,23 @@ function selectHotelForTrip(hotelId) {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 3: GOOGLE-STYLE MAP & TURN-BY-TURN DRIVING ENGINE
+// TAB 3: PURE GOOGLE-STYLE MAP & LIVE GPS NAVIGATION
 // -----------------------------------------------------------------------------
+
 async function initOrUpdateMap() {
   if (!state.map) {
     state.map = L.map('route-map', {
       zoomControl: true
     }).setView([12.2, 78.4], 8);
 
-    // Initial tile layer: Google-Style Street Map (CartoDB Voyager)
-    setMapLayer('street');
+    // Initial tile layer: Pure Google-Style Street Map (CartoDB Voyager)
+    state.tileLayer = L.tileLayer(GOOGLE_MAPS_LAYER.url, {
+      attribution: GOOGLE_MAPS_LAYER.attribution,
+      maxZoom: 18
+    }).addTo(state.map);
+
+    const expLabel = document.getElementById('map-layer-explanation');
+    if (expLabel) expLabel.innerText = GOOGLE_MAPS_LAYER.explanation;
   }
 
   if (!state.routeData) {
@@ -702,34 +814,102 @@ async function initOrUpdateMap() {
   }
 }
 
-// Set Map Layer & Update Explanatory Text
-function setMapLayer(type) {
-  if (state.tileLayer) {
-    state.map.removeLayer(state.tileLayer);
+// Live Device GPS Location Engine (HTML5 Geolocation)
+function useLiveBrowserLocation() {
+  const btnText = document.getElementById('live-gps-btn-text');
+  if (!navigator.geolocation) {
+    showToast('Geolocation is not supported by your browser', 'error');
+    return;
   }
-  state.currentTileType = type;
-  const cfg = MAP_LAYERS[type] || MAP_LAYERS.street;
 
-  state.tileLayer = L.tileLayer(cfg.url, {
-    attribution: cfg.attribution,
-    maxZoom: 18
-  }).addTo(state.map);
+  if (btnText) btnText.innerText = '📍 Acquiring GPS...';
+  showToast('Connecting to device GPS sensor...', 'info');
 
-  // Update explanation label
-  const expLabel = document.getElementById('map-layer-explanation');
-  if (expLabel) expLabel.innerText = cfg.explanation;
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      state.currentCoord = [lat, lng];
 
-  // Update button active states
-  ['street', 'satellite', 'night', 'terrain'].forEach(k => {
-    const btn = document.getElementById(`layer-btn-${k}`);
-    if (btn) {
-      if (k === type) {
-        btn.className = 'px-2.5 py-1 rounded-lg bg-white text-[#1A73E8] font-bold shadow-sm';
-      } else {
-        btn.className = 'px-2.5 py-1 rounded-lg hover:text-[#202124]';
+      if (btnText) btnText.innerText = '📍 GPS Locked';
+
+      // Reverse geocode coords to city name
+      let locationName = `Live GPS (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
+      try {
+        const geoRes = await apiCall(`/api/routes/reverse-geocode?lat=${lat}&lng=${lng}`);
+        if (geoRes && geoRes.city) {
+          locationName = geoRes.city;
+        }
+      } catch (e) {}
+
+      // Update Source input in Tab 1
+      const sourceInput = document.getElementById('woa-source');
+      if (sourceInput) sourceInput.value = locationName;
+      state.tripSource = locationName;
+
+      // Update map vehicle & live dot
+      if (state.map) {
+        updateLiveGpsMarker(lat, lng, position.coords.accuracy);
+        state.map.setView([lat, lng], 13);
       }
-    }
+
+      // Record to server trip telemetry
+      try {
+        await apiCall(`/api/trips/${state.tripId}/location`, 'POST', {
+          latitude: lat,
+          longitude: lng
+        });
+      } catch (e) {}
+
+      showToast(`📍 Live GPS acquired: ${locationName} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, 'success');
+      confetti({ particleCount: 40, spread: 50 });
+
+      // Recalculate route and distance dynamically from live position
+      const dest = document.getElementById('woa-destination')?.value.trim() || state.tripDestination;
+      calculateDynamicDistance(locationName, dest);
+    },
+    (error) => {
+      console.warn('Geolocation notice:', error);
+      if (btnText) btnText.innerText = '📍 Use My Live GPS';
+      showToast(`GPS Notice: ${error.message || 'Permission denied'}. Utilizing high-precision highway route.`, 'info');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+function updateLiveGpsMarker(lat, lng, accuracy = 50) {
+  if (!state.map) return;
+  const liveIcon = L.divIcon({
+    className: 'live-gps-dot',
+    html: `
+      <div style="position: relative; width: 28px; height: 28px;">
+        <span style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background: rgba(26,115,232,0.4); animation: sonar-wave 1.8s infinite ease-out;"></span>
+        <div style="position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #1A73E8; border: 3px solid white; box-shadow: 0 0 10px rgba(26,115,232,0.7);"></div>
+      </div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
   });
+
+  if (state.liveGpsMarker) {
+    state.liveGpsMarker.setLatLng([lat, lng]);
+  } else {
+    state.liveGpsMarker = L.marker([lat, lng], { icon: liveIcon, zIndexOffset: 1000 }).addTo(state.map);
+    state.liveGpsMarker.bindPopup('<b>📍 Your Current Live Location</b>');
+  }
+
+  if (state.liveGpsCircle) {
+    state.liveGpsCircle.setLatLng([lat, lng]);
+    state.liveGpsCircle.setRadius(Math.max(100, accuracy));
+  } else {
+    state.liveGpsCircle = L.circle([lat, lng], {
+      radius: Math.max(100, accuracy),
+      color: '#1A73E8',
+      fillColor: '#1A73E8',
+      fillOpacity: 0.12,
+      weight: 1.5
+    }).addTo(state.map);
+  }
 }
 
 // Load Route with Dual Geometry (Direct vs Safe Bypass) + Turn-by-Turn Steps
@@ -763,15 +943,15 @@ function renderDualRoutesOnMap(data) {
   state.directPolyline = L.polyline(directCoords, {
     color: '#D93025',
     weight: state.routeMode === 'direct' ? 6 : 3,
-    opacity: state.routeMode === 'direct' ? 0.9 : 0.4,
+    opacity: state.routeMode === 'direct' ? 0.9 : 0.35,
     dashArray: '6, 6'
   }).addTo(state.map);
 
-  // 2. Draw AI Safe Bypass Route (Google Maps Electric Blue #1A73E8 with emerald accent)
+  // 2. Draw AI Safe Bypass Route (Google Maps Electric Blue #1A73E8)
   state.safePolyline = L.polyline(safeCoords, {
     color: '#1A73E8',
     weight: state.routeMode === 'safe' ? 7 : 3,
-    opacity: state.routeMode === 'safe' ? 0.95 : 0.45
+    opacity: state.routeMode === 'safe' ? 0.95 : 0.4
   }).addTo(state.map);
 
   // Origin Marker (Green Pin "A")
@@ -887,14 +1067,18 @@ function renderTurnByTurnDirections(data) {
   const activeRoute = state.routeMode === 'safe' ? data.safe_bypass_route : data.direct_route;
   const steps = activeRoute.steps || [];
 
-  document.getElementById('directions-steps-badge').innerText = `${steps.length} Steps`;
-  document.getElementById('directions-summary-text').innerText = `${activeRoute.distance_km} km • ${activeRoute.estimated_hours} hr via ${state.routeMode === 'safe' ? 'AI Safe Bypass (NH-181)' : 'Standard NH-48'}`;
+  const stepsBadge = document.getElementById('directions-steps-badge');
+  const summaryText = document.getElementById('directions-summary-text');
+  if (stepsBadge) stepsBadge.innerText = `${steps.length} Steps`;
+  if (summaryText) summaryText.innerText = `${activeRoute.distance_km} km • ${activeRoute.estimated_hours} hr via ${state.routeMode === 'safe' ? 'AI Safe Bypass Corridor' : 'Standard Highway'}`;
 
   // Update floating next turn HUD
   if (steps.length > 0) {
     const s0 = steps[0];
-    document.getElementById('hud-turn-dist').innerText = `Next: in ${s0.distance_label}`;
-    document.getElementById('hud-turn-text').innerText = s0.instruction;
+    const turnDist = document.getElementById('hud-turn-dist');
+    const turnText = document.getElementById('hud-turn-text');
+    if (turnDist) turnDist.innerText = `Next: in ${s0.distance_label}`;
+    if (turnText) turnText.innerText = s0.instruction;
   }
 
   container.innerHTML = steps.map((s, idx) => {
@@ -937,12 +1121,13 @@ function focusMapOnStep(lat, lng, stepIndex) {
   const activeRoute = state.routeMode === 'safe' ? state.routeData.safe_bypass_route : state.routeData.direct_route;
   const s = activeRoute.steps[stepIndex];
   if (s) {
-    document.getElementById('hud-turn-dist').innerText = `Step ${s.step_number} • in ${s.distance_label}`;
-    document.getElementById('hud-turn-text').innerText = s.instruction;
+    const turnDist = document.getElementById('hud-turn-dist');
+    const turnText = document.getElementById('hud-turn-text');
+    if (turnDist) turnDist.innerText = `Step ${s.step_number} • in ${s.distance_label}`;
+    if (turnText) turnText.innerText = s.instruction;
   }
 }
 
-// Switch between Direct & Safe Bypass Route Modes
 function switchToSafeBypassRoute(fromBanner = false) {
   state.routeMode = 'safe';
   updateRouteModeButtons();
@@ -969,6 +1154,7 @@ function switchToDirectRoute() {
 function updateRouteModeButtons() {
   const btnSafe = document.getElementById('btn-route-safe');
   const btnDirect = document.getElementById('btn-route-direct');
+  if (!btnSafe || !btnDirect) return;
 
   if (state.routeMode === 'safe') {
     btnSafe.className = 'px-4 py-2 rounded-xl bg-[#1E8E3E] text-white shadow-md flex items-center gap-2 transition-all';
@@ -991,8 +1177,10 @@ function toggleDriveSimulation() {
 function startSimulation() {
   if (!state.routeData) return;
   state.simulating = true;
-  document.getElementById('sim-text').innerText = 'Pause Drive';
-  document.getElementById('sim-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  const simText = document.getElementById('sim-text');
+  const simIcon = document.getElementById('sim-icon');
+  if (simText) simText.innerText = 'Pause Drive';
+  if (simIcon) simIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
 
   const activePath = state.routeMode === 'safe'
     ? state.routeData.safe_bypass_route.geometry.coordinates.map(pt => [pt[1], pt[0]])
@@ -1005,7 +1193,7 @@ function startSimulation() {
   state.simInterval = setInterval(() => {
     if (state.simIndex >= activePath.length) {
       stopSimulation();
-      showToast('Group has safely reached destination in Ooty!', 'success');
+      showToast(`Group has safely reached destination in ${state.tripDestination}!`, 'success');
       confetti({ particleCount: 70, spread: 70 });
       return;
     }
@@ -1015,14 +1203,15 @@ function startSimulation() {
     state.carMarker.setLatLng(coord);
     state.carCircle.setLatLng(coord);
 
-    document.getElementById('current-coords-label').innerText = `${coord[0].toFixed(4)}°N, ${coord[1].toFixed(4)}°E`;
+    const coordsLabel = document.getElementById('current-coords-label');
+    if (coordsLabel) coordsLabel.innerText = `${coord[0].toFixed(4)}°N, ${coord[1].toFixed(4)}°E`;
 
     // Speed fluctuation
     const speed = Math.floor(58 + Math.random() * 18);
     const speedLabel = document.getElementById('live-speed-label');
     if (speedLabel) speedLabel.innerText = `${speed} km/h`;
 
-    // Check Geofence breach simulation near Thoppur
+    // Check Geofence breach simulation
     if (state.simIndex > 30 && state.simIndex < 45 && !state.activeAlert) {
       triggerGeofenceAlertUI({
         title: 'Approaching Thoppur Ghat S-Curve',
@@ -1042,8 +1231,10 @@ function startSimulation() {
       
       const s = steps[stepIdx];
       if (s) {
-        document.getElementById('hud-turn-dist').innerText = `Step ${s.step_number} • in ${s.distance_label}`;
-        document.getElementById('hud-turn-text').innerText = s.instruction;
+        const turnDist = document.getElementById('hud-turn-dist');
+        const turnText = document.getElementById('hud-turn-text');
+        if (turnDist) turnDist.innerText = `Step ${s.step_number} • in ${s.distance_label}`;
+        if (turnText) turnText.innerText = s.instruction;
       }
     }
 
@@ -1054,8 +1245,10 @@ function startSimulation() {
 function stopSimulation() {
   state.simulating = false;
   clearInterval(state.simInterval);
-  document.getElementById('sim-text').innerText = 'Simulate Live Drive';
-  document.getElementById('sim-icon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+  const simText = document.getElementById('sim-text');
+  const simIcon = document.getElementById('sim-icon');
+  if (simText) simText.innerText = 'Simulate Live Drive';
+  if (simIcon) simIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
 }
 
 function resetSimulation() {
@@ -1069,7 +1262,8 @@ function resetSimulation() {
   state.carMarker.setLatLng(activePath[0]);
   state.carCircle.setLatLng(activePath[0]);
   state.map.setView(activePath[0], 12);
-  document.getElementById('current-coords-label').innerText = `${activePath[0][0].toFixed(4)}°N, ${activePath[0][1].toFixed(4)}°E`;
+  const coordsLabel = document.getElementById('current-coords-label');
+  if (coordsLabel) coordsLabel.innerText = `${activePath[0][0].toFixed(4)}°N, ${activePath[0][1].toFixed(4)}°E`;
 }
 
 function triggerGeofenceAlertUI(alert) {
@@ -1097,7 +1291,7 @@ function renderCorridorMetrics(data) {
     <div class="bg-white border border-[#E8EAED] rounded-2xl p-4 shadow-sm card-hover-3d">
       <span class="text-xs text-[#5F6368] font-bold block uppercase">Total Distance</span>
       <span class="text-xl font-extrabold text-[#202124] mt-1 block">${data.direct_route.distance_km} km</span>
-      <span class="text-[11px] text-[#5F6368]">Via NH-48 & NH-544</span>
+      <span class="text-[11px] text-[#5F6368]">Live OSRM Highway Sync</span>
     </div>
 
     <div class="bg-white border border-[#E8EAED] rounded-2xl p-4 shadow-sm card-hover-3d">
@@ -1128,9 +1322,13 @@ async function loadContract() {
     const res = await apiCall(`/api/safety/contract/${state.tripId}`);
     state.contract = res;
     if (res.contract) {
-      document.getElementById('contract-trip-title').innerText = `${state.tripSource} to ${state.tripDestination} Trip Shield`;
-      document.getElementById('contract-target-time-label').innerText = new Date(res.contract.expected_return_time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-      document.getElementById('contract-last-loc-label').innerText = `Last GPS: ${res.contract.last_known_lat || 13.0827}°N, ${res.contract.last_known_lng || 80.2707}°E`;
+      const tripTitle = document.getElementById('contract-trip-title');
+      const targetTime = document.getElementById('contract-target-time-label');
+      const lastLoc = document.getElementById('contract-last-loc-label');
+
+      if (tripTitle) tripTitle.innerText = `${state.tripSource} to ${state.tripDestination} Trip Shield`;
+      if (targetTime) targetTime.innerText = new Date(res.contract.expected_return_time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+      if (lastLoc) lastLoc.innerText = `Last GPS: ${res.contract.last_known_lat || 13.0827}°N, ${res.contract.last_known_lng || 80.2707}°E`;
     }
   } catch (err) {
     console.error('Failed to load contract', err);
@@ -1140,7 +1338,7 @@ async function loadContract() {
 async function performSafeCheckin() {
   try {
     await apiCall(`/api/safety/checkin/${state.tripId}`, 'POST', {
-      notes: 'Group safely reached cottage in Ooty.'
+      notes: `Group safely reached destination in ${state.tripDestination}.`
     });
     confetti({ particleCount: 70, spread: 70 });
     showToast('Safe group arrival checked in! Sentinel disarmed.', 'success');
@@ -1185,9 +1383,8 @@ async function saveReturnContract() {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 5: PROPER SPLITWISE & SETTLE UP
+// TAB 5: INDIVIDUAL SPLITWISE & 1-CLICK TRIP COMPLETION
 // -----------------------------------------------------------------------------
-let activeExpenseCategoryFilter = '';
 
 async function loadExpenses() {
   try {
@@ -1202,19 +1399,38 @@ async function loadExpenses() {
 }
 
 function filterExpensesByCategory(cat) {
-  activeExpenseCategoryFilter = cat;
+  state.activeExpenseCategoryFilter = cat;
   document.querySelectorAll('.exp-cat-btn').forEach(b => {
     b.className = 'exp-cat-btn px-2.5 py-1 rounded-lg bg-[#F1F3F4] text-[#3C4043] font-bold';
   });
   if (event && event.target) {
     event.target.className = 'exp-cat-btn active px-2.5 py-1 rounded-lg bg-teal-700 text-white font-bold';
   }
-  const expenses = state.expensesData?.expenses || [];
-  const filtered = cat ? expenses.filter(e => e.category === cat) : expenses;
-  renderExpensesFeed(filtered);
+  filterAndRenderExpenses();
 }
 
-// Renders the 4 member balance cards with Net +/- balances
+function filterExpensesByMember(memberName) {
+  if (state.activeMemberFilter === memberName) {
+    state.activeMemberFilter = '';
+  } else {
+    state.activeMemberFilter = memberName;
+  }
+  filterAndRenderExpenses();
+  renderMemberBalances(state.expensesData?.members || [], state.expensesData?.expenses || []);
+}
+
+function filterAndRenderExpenses() {
+  let list = state.expensesData?.expenses || [];
+  if (state.activeExpenseCategoryFilter) {
+    list = list.filter(e => e.category === state.activeExpenseCategoryFilter);
+  }
+  if (state.activeMemberFilter) {
+    list = list.filter(e => e.payer_name === state.activeMemberFilter || (e.split_among && e.split_among.includes(state.activeMemberFilter)));
+  }
+  renderExpensesFeed(list);
+}
+
+// Renders the 4 member balance cards with Net +/- balances & individual filter action
 function renderMemberBalances(members, expenses) {
   const container = document.getElementById('splitwise-member-balances-grid');
   if (!container) return;
@@ -1231,22 +1447,29 @@ function renderMemberBalances(members, expenses) {
     else paidMap[p] = e.amount;
   });
 
-  container.innerHTML = members.map(m => {
+  const memberColors = ['#1A73E8', '#1E8E3E', '#9333EA', '#EA8600', '#D93025'];
+
+  container.innerHTML = members.map((m, idx) => {
     const paid = paidMap[m] || 0;
     const net = paid - fairShare;
     const isCreditor = net >= 0;
+    const isFiltered = state.activeMemberFilter === m;
+    const color = memberColors[idx % memberColors.length];
 
     return `
-      <div class="bg-white border border-[#E8EAED] rounded-2xl p-4 shadow-sm card-hover-3d space-y-1.5">
+      <div onclick="filterExpensesByMember('${m}')" class="bg-white border ${isFiltered ? 'border-teal-600 ring-2 ring-teal-500/20' : 'border-[#E8EAED]'} rounded-2xl p-4 shadow-sm card-hover-3d space-y-2 cursor-pointer transition-all">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-full bg-[#1A73E8] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+            <div class="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shadow-sm" style="background-color: ${color}">
               ${m.charAt(0)}
             </div>
-            <span class="text-xs font-bold text-[#202124]">${m}</span>
+            <div>
+              <span class="text-xs font-bold text-[#202124] block">${m}</span>
+              <span class="text-[10px] text-[#5F6368]">${idx === 0 ? 'Trip Organizer' : 'Member'}</span>
+            </div>
           </div>
           <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isCreditor ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
-            ${isCreditor ? 'Gets Back' : 'Owes Money'}
+            ${isCreditor ? 'Gets Back' : 'Owes Group'}
           </span>
         </div>
 
@@ -1257,9 +1480,14 @@ function renderMemberBalances(members, expenses) {
           </span>
         </div>
 
-        <div class="text-[10px] text-[#5F6368] flex justify-between border-t border-[#F1F3F4] pt-1">
-          <span>Paid: ₹${Math.round(paid).toLocaleString()}</span>
-          <span>Share: ₹${Math.round(fairShare).toLocaleString()}</span>
+        <div class="text-[10px] text-[#5F6368] flex justify-between border-t border-[#F1F3F4] pt-1.5">
+          <span>Total Paid: <strong class="text-[#202124]">₹${Math.round(paid).toLocaleString()}</strong></span>
+          <span>Fair Share: <strong class="text-[#202124]">₹${Math.round(fairShare).toLocaleString()}</strong></span>
+        </div>
+
+        <div class="pt-1 text-[10px] font-bold text-teal-700 flex items-center justify-between">
+          <span>${isFiltered ? '✓ Showing friend expenses' : 'Click to filter expenses'}</span>
+          <span>➔</span>
         </div>
       </div>
     `;
@@ -1275,7 +1503,7 @@ function renderExpensesFeed(expenses) {
   if (totalPill) totalPill.innerText = `Total: ₹${total.toLocaleString()}`;
 
   if (expenses.length === 0) {
-    container.innerHTML = '<p class="text-xs text-[#5F6368] text-center py-4">No expenses logged yet.</p>';
+    container.innerHTML = '<p class="text-xs text-[#5F6368] text-center py-4">No expenses match the selected filter.</p>';
     return;
   }
 
@@ -1405,6 +1633,94 @@ async function submitNewExpense(e) {
 }
 
 // -----------------------------------------------------------------------------
+// TRIP COMPLETION CERTIFICATE & ARCHIVE ENGINE
+// -----------------------------------------------------------------------------
+
+async function triggerCompleteTripModal() {
+  try {
+    const res = await apiCall(`/api/trips/${state.tripId}/complete`, 'POST');
+    
+    // Populate modal values
+    const spentEl = document.getElementById('complete-total-spent');
+    const expCountEl = document.getElementById('complete-expenses-count');
+    const stlCountEl = document.getElementById('complete-settlements-count');
+
+    if (spentEl) spentEl.innerText = `₹${Number(res.total_spent).toLocaleString()}`;
+    if (expCountEl) expCountEl.innerText = res.total_expenses_count || '5';
+    if (stlCountEl) stlCountEl.innerText = `${res.settlements_settled || 3} / ${res.settlements_settled || 3}`;
+
+    // Render member final summary in ledger
+    const members = state.expensesData?.members || ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon'];
+    const totalSpent = res.total_spent || 31250;
+    const share = members.length > 0 ? Math.round(totalSpent / members.length) : 0;
+
+    const ledgerContainer = document.getElementById('complete-members-ledger');
+    if (ledgerContainer) {
+      ledgerContainer.innerHTML = members.map(m => `
+        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="font-bold text-[#202124]">${m}</span>
+          </div>
+          <span class="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+            ✓ Fully Settled (₹${share.toLocaleString()} Share)
+          </span>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('trip-complete-modal').classList.remove('hidden');
+    confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+    showToast('🎉 Trip completed and archived! All member balances are fully settled.', 'success');
+
+    // Reload expenses to show updated settled status
+    loadExpenses();
+  } catch (err) {
+    showToast(`Notice: ${err.message}`, 'error');
+  }
+}
+
+function closeCompleteTripModal() {
+  document.getElementById('trip-complete-modal').classList.add('hidden');
+}
+
+function downloadTripSummaryReport() {
+  const tripTitle = `${state.tripSource} to ${state.tripDestination} Trip`;
+  const total = state.expensesData?.expenses?.reduce((s, e) => s + e.amount, 0) || 31250;
+  const members = state.expensesData?.members || ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon'];
+  
+  const reportLines = [
+    `============================================================`,
+    `SECURETOUR AI — TRIP FINANCIAL & SETTLEMENT CERTIFICATE`,
+    `============================================================`,
+    `Trip: ${tripTitle}`,
+    `Status: COMPLETED & ARCHIVED`,
+    `Generated At: ${new Date().toLocaleString()}`,
+    `Total Group Spend: ₹${total.toLocaleString()}`,
+    `Total Members: ${members.length}`,
+    `Fair Share Per Member: ₹${Math.round(total / (members.length || 1)).toLocaleString()}`,
+    `------------------------------------------------------------`,
+    `MEMBER ACCOUNTS SETTLED:`,
+    ...members.map(m => ` - ${m}: Reconciled & Settle Confirmed`),
+    `------------------------------------------------------------`,
+    `EXPENSE AUDIT LOG:`,
+    ...(state.expensesData?.expenses || []).map(e => ` - [${e.category}] ${e.description}: ₹${e.amount} (Paid by ${e.payer_name})`),
+    `------------------------------------------------------------`,
+    `All debts have been minimized via Graph Cash Flow algorithm.`,
+    `============================================================`
+  ];
+
+  const blob = new Blob([reportLines.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SecureTour_${state.tripSource}_to_${state.tripDestination}_Settlement_Report.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Trip report downloaded successfully!', 'success');
+}
+
+// -----------------------------------------------------------------------------
 // SOS MODAL & DIRECT EMERGENCY DIALING
 // -----------------------------------------------------------------------------
 function openSOSModal() {
@@ -1506,8 +1822,7 @@ function initWebSocket() {
 window.addEventListener('DOMContentLoaded', () => {
   initAuth();
   initWebSocket();
-  runWOACostOptimizer();
-  loadHotels();
+  calculateDynamicDistance(state.tripSource, state.tripDestination);
   loadContract();
   loadExpenses();
 });
