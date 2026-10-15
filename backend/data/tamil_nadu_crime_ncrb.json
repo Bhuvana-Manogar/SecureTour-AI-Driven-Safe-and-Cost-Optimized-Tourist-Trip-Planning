@@ -1,0 +1,136 @@
+{
+  "state": "Tamil Nadu",
+  "source": "National Crime Records Bureau (NCRB) & Tamil Nadu Police Crime Statistics",
+  "districts": {
+    "Chennai": {
+      "crime_rate_per_lakh": 420.5,
+      "property_crime_pct": 38.2,
+      "violent_crime_rate": 14.2,
+      "women_safety_index": 78.4,
+      "night_safety_score": 75.0,
+      "police_stations_count": 135,
+      "tourist_safety_tier": "MODERATE_URBAN",
+      "safety_recommendations": "Beware of pickpocketing in crowded transport terminals (Koyambedu, Central), avoid isolated beach corridors after 11 PM."
+    },
+    "Chengalpattu": {
+      "crime_rate_per_lakh": 272.0,
+      "property_crime_pct": 31.0,
+      "violent_crime_rate": 12.1,
+      "women_safety_index": 76.2,
+      "night_safety_score": 72.5,
+      "police_stations_count": 32,
+      "tourist_safety_tier": "MODERATE",
+      "safety_recommendations": "Keep vehicle doors locked around highway tolls, stick to main GST highway hotels."
+    },
+    "Kanchipuram": {
+      "crime_rate_per_lakh": 265.4,
+      "property_crime_pct": 29.5,
+      "violent_crime_rate": 11.8,
+      "women_safety_index": 77.0,
+      "night_safety_score": 74.0,
+      "police_stations_count": 28,
+      "tourist_safety_tier": "MODERATE",
+      "safety_recommendations": "Safe heritage zone during daytime, exercise standard caution around peripheral temple lanes."
+    },
+    "Ranipet": {
+      "crime_rate_per_lakh": 258.0,
+      "property_crime_pct": 28.0,
+      "violent_crime_rate": 10.9,
+      "women_safety_index": 76.5,
+      "night_safety_score": 71.0,
+      "police_stations_count": 22,
+      "tourist_safety_tier": "MODERATE",
+      "safety_recommendations": "Heavy industrial movement, choose hotels with 24-hour guarded parking."
+    },
+    "Vellore": {
+      "crime_rate_per_lakh": 290.1,
+      "property_crime_pct": 31.4,
+      "violent_crime_rate": 13.0,
+      "women_safety_index": 75.8,
+      "night_safety_score": 73.0,
+      "police_stations_count": 36,
+      "tourist_safety_tier": "MODERATE",
+      "safety_recommendations": "Active city center around CMC and Fort. Avoid unlit bypass service lanes late at night."
+    },
+    "Tirupattur": {
+      "crime_rate_per_lakh": 242.0,
+      "property_crime_pct": 26.5,
+      "violent_crime_rate": 11.2,
+      "women_safety_index": 79.0,
+      "night_safety_score": 73.5,
+      "police_stations_count": 18,
+      "tourist_safety_tier": "SAFE_HIGHWAY",
+      "safety_recommendations": "Highway dining hubs like Ambur are vibrant; keep to well-reviewed family rest stops."
+    },
+    "Krishnagiri": {
+      "crime_rate_per_lakh": 230.5,
+      "property_crime_pct": 24.0,
+      "violent_crime_rate": 10.5,
+      "women_safety_index": 80.5,
+      "night_safety_score": 76.0,
+      "police_stations_count": 25,
+      "tourist_safety_tier": "SAFE_TRANSIT",
+      "safety_recommendations": "Interstate transit corridor, high police highway patrol presence on NH-44."
+    },
+    "Dharmapuri": {
+      "crime_rate_per_lakh": 215.0,
+      "property_crime_pct": 22.1,
+      "violent_crime_rate": 9.8,
+      "women_safety_index": 82.0,
+      "night_safety_score": 77.0,
+      "police_stations_count": 21,
+      "tourist_safety_tier": "SAFE_RURAL",
+      "safety_recommendations": "Low street crime, main risk is mountain highway curves (Thoppur Ghat)."
+    },
+    "Salem": {
+      "crime_rate_per_lakh": 310.2,
+      "property_crime_pct": 33.0,
+      "violent_crime_rate": 12.5,
+      "women_safety_index": 78.0,
+      "night_safety_score": 76.5,
+      "police_stations_count": 48,
+      "tourist_safety_tier": "MODERATE_URBAN",
+      "safety_recommendations": "Major junction city with lively night traffic; stick to well-patrolled arterial roads."
+    },
+    "Erode": {
+      "crime_rate_per_lakh": 245.8,
+      "property_crime_pct": 24.2,
+      "violent_crime_rate": 8.9,
+      "women_safety_index": 84.5,
+      "night_safety_score": 82.0,
+      "police_stations_count": 35,
+      "tourist_safety_tier": "VERY_SAFE",
+      "safety_recommendations": "Very high safety ratings, welcoming civic environment, reputable highway rest stops."
+    },
+    "Tiruppur": {
+      "crime_rate_per_lakh": 270.0,
+      "property_crime_pct": 28.5,
+      "violent_crime_rate": 10.2,
+      "women_safety_index": 81.0,
+      "night_safety_score": 78.0,
+      "police_stations_count": 30,
+      "tourist_safety_tier": "SAFE",
+      "safety_recommendations": "Industrial commercial hub; safe highway motels along bypass."
+    },
+    "Coimbatore": {
+      "crime_rate_per_lakh": 285.6,
+      "property_crime_pct": 29.8,
+      "violent_crime_rate": 9.5,
+      "women_safety_index": 86.0,
+      "night_safety_score": 84.5,
+      "police_stations_count": 62,
+      "tourist_safety_tier": "VERY_SAFE_TIER2",
+      "safety_recommendations": "Ranked among safest tier-2 cities in India; 24x7 emergency medical infrastructure."
+    },
+    "The Nilgiris": {
+      "crime_rate_per_lakh": 112.3,
+      "property_crime_pct": 12.4,
+      "violent_crime_rate": 3.1,
+      "women_safety_index": 94.5,
+      "night_safety_score": 89.0,
+      "police_stations_count": 19,
+      "tourist_safety_tier": "EXCEPTIONALLY_SAFE",
+      "safety_recommendations": "Lowest crime rate in Tamil Nadu. The primary risks are wildlife crossings (elephants/bison) at night and steep mountain roads. Keep headlights bright, avoid walking in isolated reserve forests after sunset."
+    }
+  }
+}

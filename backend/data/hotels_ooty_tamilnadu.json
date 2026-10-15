@@ -1,0 +1,172 @@
+[
+  {
+    "id": "hotel-001",
+    "name": "Savoy - IHCL SeleQtions",
+    "district": "The Nilgiris",
+    "city": "Ooty",
+    "address": "77, Sylks Road, Ooty, Tamil Nadu 643001",
+    "star_rating": 5.0,
+    "price_per_night": 14500,
+    "latitude": 11.4112,
+    "longitude": 76.6980,
+    "amenities": ["24/7 Guarded Perimeter", "CCTV Surveillance", "In-room Digital Safe", "Valet Enclosed Parking", "Medical First Aid On-site"],
+    "reviews": [
+      "Traveled as a group of four friends. Outstanding safety measures, gated estate with 24-hour private security personnel at the main archway.",
+      "Very well-lit garden pathways at night. Female travelers in our group felt 100% comfortable walking around the colonial lawns even after 10 PM.",
+      "High level of professionalism from front desk, strict visitor logging, reliable locks and double deadbolts on heritage cottage doors."
+    ]
+  },
+  {
+    "id": "hotel-002",
+    "name": "Sterling Ooty Fern Hill",
+    "district": "The Nilgiris",
+    "city": "Ooty",
+    "address": "Fern Hill, Ooty, Tamil Nadu 643004",
+    "star_rating": 4.2,
+    "price_per_night": 6200,
+    "latitude": 11.3980,
+    "longitude": 76.6875,
+    "amenities": ["Security Gate", "CCTV in Hallways", "Doctor on Call", "Dedicated Parking", "Safe Deposit Boxes"],
+    "reviews": [
+      "Great resort perched on Fern Hill. The entry has a proper guard boom barrier and security checks every car.",
+      "The approach road has some dark curves at night, but inside the resort boundary it is completely illuminated and fenced.",
+      "Rooms have solid electronic RFID card locks. Felt very secure leaving our laptops and cameras during daytime sightseeing."
+    ]
+  },
+  {
+    "id": "hotel-003",
+    "name": "Pine Shadow Mist Cottage (Isolated Valley)",
+    "district": "The Nilgiris",
+    "city": "Ooty",
+    "address": "Upper Doddabetta Valley Trail, Ooty, Tamil Nadu",
+    "star_rating": 4.1,
+    "price_per_night": 2800,
+    "latitude": 11.4230,
+    "longitude": 76.7320,
+    "amenities": ["Campfire", "Mountain View", "Parking Space"],
+    "reviews": [
+      "The view is breathtaking, but the road leading to this cottage is extremely dark, isolated, and unpaved. No streetlights for 1.5 km.",
+      "There is no night security guard at the gate. We heard wild boars and stray dogs banging near the porch, felt nervous arriving late.",
+      "The balcony door lock was loose and broken. Had to push a heavy chair against it for the night. Solo or women groups should be cautious after dark."
+    ]
+  },
+  {
+    "id": "hotel-004",
+    "name": "Sinclairs Retreat Ooty",
+    "district": "The Nilgiris",
+    "city": "Ooty",
+    "address": "Gorishola Road, Ooty, Tamil Nadu 643001",
+    "star_rating": 4.3,
+    "price_per_night": 7800,
+    "latitude": 11.4325,
+    "longitude": 76.7160,
+    "amenities": ["24/7 Security", "CCTV Campus", "Gated Compound", "First Aid", "Safe Parking"],
+    "reviews": [
+      "Perched high on the ridge with panoramic Nilgiri views. Security staff assisted our vehicle parking even during heavy fog at 9 PM.",
+      "Well-maintained property with bright LED lighting along corridors and parking lots. Reception staffed 24 hours.",
+      "Felt very secure. Staff gave us clear safety advice about not wandering into the eucalyptus woods past sunset due to bison sightings."
+    ]
+  },
+  {
+    "id": "hotel-005",
+    "name": "Wilderness Edge Backpacker Cabin",
+    "district": "The Nilgiris",
+    "city": "Ooty",
+    "address": "Fingerpost Forest Lane, Ooty, Tamil Nadu",
+    "star_rating": 3.8,
+    "price_per_night": 1500,
+    "latitude": 11.4050,
+    "longitude": 76.6690,
+    "amenities": ["Shared Kitchen", "Dorm Beds", "Wi-Fi"],
+    "reviews": [
+      "Cheap stay for backpackers, but the alley has zero lights and feels creepy at night. Shady characters drinking alcohol near the entrance.",
+      "One friend had cash stolen from an unlocked locker in the dorm room. Management refused to check cameras because CCTV was non-functional.",
+      "Host was unreachable after 9 PM. If an emergency occurs, there is literally nobody at reception and phone signal drops."
+    ]
+  },
+  {
+    "id": "hotel-006",
+    "name": "Gateway Coonoor - IHCL SeleQtions",
+    "district": "The Nilgiris",
+    "city": "Coonoor",
+    "address": "Upper Coonoor, Tamil Nadu 643101",
+    "star_rating": 4.6,
+    "price_per_night": 11000,
+    "latitude": 11.3530,
+    "longitude": 76.7950,
+    "amenities": ["24/7 Security Guard", "CCTV", "Fire Safety Sprinklers", "Private Parking", "Doctor on Call"],
+    "reviews": [
+      "Impeccable heritage safety standards. Security team actively monitors incoming cabs and logs visitor driver details.",
+      "Our women travel group felt completely at ease. Rooms have emergency intercoms and reinforced electronic locking systems.",
+      "Located in high-end Upper Coonoor with wide, well-lit municipality roads and quick access to local hospital."
+    ]
+  },
+  {
+    "id": "hotel-007",
+    "name": "Grand Palace Hotel & Spa (Yercaud / Salem Route)",
+    "district": "Salem",
+    "city": "Salem",
+    "address": "Kilianur Falls Road, Yercaud, Salem District",
+    "star_rating": 4.4,
+    "price_per_night": 5500,
+    "latitude": 11.7760,
+    "longitude": 78.2090,
+    "amenities": ["24/7 Security", "CCTV", "Valet Parking", "Restaurant", "Safe Lockers"],
+    "reviews": [
+      "Stayed during transit from Chennai to Ooty. Huge gated premise with disciplined night security guards and metal detectors.",
+      "Brightly illuminated courtyard and parking zone with high-resolution CCTV coverage.",
+      "Front desk arranged an emergency puncture repair and checked our brakes before we continued the ghat journey."
+    ]
+  },
+  {
+    "id": "hotel-008",
+    "name": "Highway Oasis Motel & Rest Stop",
+    "district": "Ranipet",
+    "city": "Ranipet / Walajapet",
+    "address": "NH-48 Corridor, Ranipet, Tamil Nadu",
+    "star_rating": 3.2,
+    "price_per_night": 1800,
+    "latitude": 12.9250,
+    "longitude": 79.3700,
+    "amenities": ["Parking", "Restaurant", "Basic AC"],
+    "reviews": [
+      "Convenient for late night stopover on NH-48. However, parking is right on the dusty highway shoulder without a security boundary wall.",
+      "Truck drivers roaming nearby made the hallway feel intimidating for solo female guests. No security guard on duty after midnight.",
+      "Doors had flimsy latch locks. We stayed awake checking our car parked outside."
+    ]
+  },
+  {
+    "id": "hotel-009",
+    "name": "Radisson Blu Resort Temple Bay",
+    "district": "Chengalpattu",
+    "city": "Mamallapuram",
+    "address": "57 Covelong Road, Mamallapuram, Tamil Nadu",
+    "star_rating": 4.8,
+    "price_per_night": 13500,
+    "latitude": 12.6270,
+    "longitude": 80.1980,
+    "amenities": ["24/7 Armed Security", "Full CCTV Grid", "Lifeguards on Beach", "Electronic Keycards", "Medical Bay"],
+    "reviews": [
+      "Extraordinary security. Even on the private beach stretch, resort security guards politely patrol and keep unauthorized outsiders away.",
+      "Extremely safe for girls trip. Golf carts available all night to escort guests to distant villas.",
+      "High tech card key access and tamper-proof room safes."
+    ]
+  },
+  {
+    "id": "hotel-010",
+    "name": "The Tamara Kodai (Hill Station Safety Benchmark)",
+    "district": "The Nilgiris / Western Ghats",
+    "city": "Kodaikanal / Nilgiri Outskirts",
+    "address": "St. Mary's Road, Western Ghats",
+    "star_rating": 4.9,
+    "price_per_night": 16000,
+    "latitude": 11.4150,
+    "longitude": 76.7020,
+    "amenities": ["24/7 Security", "CCTV", "Fire Safety", "Fenced Wildlife Barrier", "Heated Rooms"],
+    "reviews": [
+      "Gold standard for hill station safety. Electric safety fence prevents wildlife intrusion from adjacent reserve forest.",
+      "Comprehensive emergency response protocol with trained paramedic staff on 24-hour duty.",
+      "Every corner of the retreat is monitored, brightly lit, and staff are courteous and dependable."
+    ]
+  }
+]
