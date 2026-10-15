@@ -757,15 +757,23 @@
       <div class="bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 text-white rounded-3xl p-6 relative overflow-hidden shadow-lg">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="space-y-1.5">
-            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white text-xs font-bold">
-              <span>💳 Splitwise Graph Minimization Algorithm</span>
-            </span>
-            <h2 class="text-2xl font-extrabold tracking-tight">Proper Splitwise: Effortless Group Expense Settlement</h2>
-            <p class="text-sm text-teal-100 max-w-2xl leading-relaxed">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white text-xs font-bold">
+                <span>💳 Splitwise Graph Minimization Algorithm</span>
+              </span>
+              <span id="trip-db-isolation-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/60 text-emerald-200 text-[11px] font-mono font-bold border border-emerald-400/30">
+                🔒 Private User DB: usr-fcbc1695.db
+              </span>
+            </div>
+            <h2 id="splitwise-trip-title" class="text-2xl font-extrabold tracking-tight">Proper Splitwise: Effortless Group Expense Settlement</h2>
+            <p id="splitwise-trip-subtitle" class="text-sm text-teal-100 max-w-2xl leading-relaxed">
               Log shared fuel, hotel bookings, dining, and sightseeing passes. Our algorithm condenses dozens of tangled debts into the absolute minimum payments with instant 1-click UPI transfers (GPay / PhonePe / Paytm).
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="openAddMemberModal()" class="px-3.5 py-2.5 rounded-2xl bg-teal-900/60 hover:bg-teal-900 text-white font-bold text-xs border border-white/20 shadow-md flex items-center gap-1.5 transition-all transform active:scale-95">
+              <span>👥 + Add Co-Traveler</span>
+            </button>
             <button onclick="openAddExpenseModal()" class="px-4 py-2.5 rounded-2xl bg-white text-teal-800 hover:bg-teal-50 font-extrabold text-xs shadow-md flex items-center gap-2 transition-all transform active:scale-95">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               <span>+ Add Group Expense</span>
@@ -1030,10 +1038,7 @@
         <div>
           <label class="text-xs font-bold text-[#3C4043] block mb-1">Paid By</label>
           <select id="exp-payer" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-bold text-[#202124]">
-            <option value="Arun Kumar">Arun Kumar</option>
-            <option value="Karthik Rajan">Karthik Rajan</option>
-            <option value="Priya Sundaram">Priya Sundaram</option>
-            <option value="Divya Menon">Divya Menon</option>
+            <!-- Dynamically populated from active trip members in app.js -->
           </select>
         </div>
 
@@ -1061,30 +1066,45 @@
 
         <!-- Split Method Options -->
         <div>
-          <label class="text-xs font-bold text-[#3C4043] block mb-1">Split Among Friends</label>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#F8F9FA] border border-[#E8EAED]">
-              <input type="checkbox" name="split-friend" value="Arun Kumar" checked class="accent-[#1A73E8]">
-              <span>Arun Kumar</span>
-            </label>
-            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#F8F9FA] border border-[#E8EAED]">
-              <input type="checkbox" name="split-friend" value="Karthik Rajan" checked class="accent-[#1A73E8]">
-              <span>Karthik Rajan</span>
-            </label>
-            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#F8F9FA] border border-[#E8EAED]">
-              <input type="checkbox" name="split-friend" value="Priya Sundaram" checked class="accent-[#1A73E8]">
-              <span>Priya Sundaram</span>
-            </label>
-            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#F8F9FA] border border-[#E8EAED]">
-              <input type="checkbox" name="split-friend" value="Divya Menon" checked class="accent-[#1A73E8]">
-              <span>Divya Menon</span>
-            </label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-[#3C4043]">Split Among Co-Travelers</label>
+            <span class="text-[10px] text-teal-700 font-bold">Equally divided</span>
+          </div>
+          <div id="split-friends-container" class="grid grid-cols-2 gap-2 text-xs">
+            <!-- Dynamically populated from active trip members in app.js -->
           </div>
         </div>
 
         <div class="pt-2">
           <button type="submit" class="w-full py-3 rounded-2xl bg-teal-700 hover:bg-teal-600 text-white font-extrabold text-xs shadow-md">
             Save & Recalculate Splitwise Balances
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CO-TRAVELER / FRIEND -->
+  <div id="add-member-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="bg-white border border-[#DADCE0] rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[#F1F3F4] pb-3">
+        <h3 class="text-base font-extrabold text-[#202124]">Add Co-Traveler</h3>
+        <button onclick="closeAddMemberModal()" class="text-[#5F6368] hover:text-[#202124] text-lg font-bold">✕</button>
+      </div>
+
+      <form onsubmit="submitAddMember(event)" class="space-y-4">
+        <div>
+          <label class="text-xs font-bold text-[#3C4043] block mb-1">Friend / Co-Traveler Name</label>
+          <input id="new-member-name" required type="text" placeholder="e.g. Ananya, Rahul, Father, Meena" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-teal-600">
+          <p class="text-[11px] text-[#5F6368] mt-1.5 leading-snug">This friend will be added to your private database and appear across your group's Splitwise expenses.</p>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="closeAddMemberModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-[#3C4043] hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-600 text-white font-extrabold text-xs shadow-md transition-all">
+            + Add Member
           </button>
         </div>
       </form>

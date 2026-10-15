@@ -17,7 +17,9 @@ const state = {
   activeTab: 'plan',
   currentUser: null,
   token: localStorage.getItem('securetour_token') || null,
-  tripId: 'trip-ooty-01',
+  tripId: 'trip-usr-1',
+  userDb: 'usr-1.db',
+  tripTitle: "Travel Expedition",
   tripSource: 'Chennai',
   tripDestination: 'Ooty',
   hotels: [],
@@ -129,11 +131,13 @@ function switchTab(tabId) {
 // -----------------------------------------------------------------------------
 // USER AUTHENTICATION & LOGIN/REGISTER MODALS
 // -----------------------------------------------------------------------------
-function initAuth() {
+async function initAuth() {
   const savedUser = localStorage.getItem('securetour_user');
+  const savedToken = localStorage.getItem('securetour_token');
   if (savedUser) {
     try {
       state.currentUser = JSON.parse(savedUser);
+      state.token = savedToken;
     } catch (e) {}
   }
 
@@ -150,6 +154,34 @@ function initAuth() {
   }
 
   updateAuthHeaderUI();
+  await loadUserActiveTrip();
+}
+
+async function loadUserActiveTrip() {
+  try {
+    const res = await apiCall('/api/user/active-trip');
+    if (res && res.trip) {
+      state.tripId = res.trip.id;
+      state.tripSource = res.trip.source || 'Chennai';
+      state.tripDestination = res.trip.destination || 'Ooty';
+      state.tripTitle = res.trip.title;
+      state.userDb = res.user_db || `${state.currentUser?.id || 'usr-1'}.db`;
+
+      // Update active inputs if empty
+      const srcInput = document.getElementById('woa-source');
+      const dstInput = document.getElementById('woa-destination');
+      if (srcInput && (!srcInput.value || srcInput.value === 'Chennai')) srcInput.value = state.tripSource;
+      if (dstInput && (!dstInput.value || dstInput.value === 'Ooty')) dstInput.value = state.tripDestination;
+
+      // Update Splitwise banner badges
+      const dbBadge = document.getElementById('trip-db-isolation-badge');
+      if (dbBadge) dbBadge.innerText = `🔒 Isolated User DB: ${state.userDb}`;
+      const titleEl = document.getElementById('splitwise-trip-title');
+      if (titleEl) titleEl.innerText = `${res.trip.title} — Splitwise`;
+    }
+  } catch (err) {
+    console.warn('Could not load user active trip:', err);
+  }
 }
 
 function updateAuthHeaderUI() {
@@ -220,6 +252,10 @@ async function quickLoginDemo(email) {
 
     updateAuthHeaderUI();
     closeLoginModal();
+    await loadUserActiveTrip();
+    await calculateDynamicDistance(state.tripSource, state.tripDestination);
+    loadContract();
+    loadExpenses();
     showToast(`Signed in as ${res.user.full_name}`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
@@ -240,6 +276,10 @@ async function handleUserLoginForm(e) {
 
     updateAuthHeaderUI();
     closeLoginModal();
+    await loadUserActiveTrip();
+    await calculateDynamicDistance(state.tripSource, state.tripDestination);
+    loadContract();
+    loadExpenses();
     showToast(`Welcome back, ${res.user.full_name}!`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
@@ -273,13 +313,17 @@ async function handleUserRegisterForm(e) {
     updateAuthHeaderUI();
     closeRegisterModal();
     confetti({ particleCount: 60, spread: 60 });
+    await loadUserActiveTrip();
+    await calculateDynamicDistance(state.tripSource, state.tripDestination);
+    loadContract();
+    loadExpenses();
     showToast(`Account created! Welcome, ${res.user.full_name}`, 'success');
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
   localStorage.removeItem('securetour_token');
   localStorage.removeItem('securetour_user');
   state.currentUser = null;
@@ -287,6 +331,9 @@ function handleLogout() {
   updateAuthHeaderUI();
   toggleProfileDropdown();
   showToast('Signed out successfully.');
+  await initAuth();
+  loadContract();
+  loadExpenses();
 }
 
 // -----------------------------------------------------------------------------
@@ -1430,7 +1477,7 @@ function filterAndRenderExpenses() {
   renderExpensesFeed(list);
 }
 
-// Renders the 4 member balance cards with Net +/- balances & individual filter action
+// Renders member balance cards with Net +/- balances, Organizer badge, and Add Co-Traveler action
 function renderMemberBalances(members, expenses) {
   const container = document.getElementById('splitwise-member-balances-grid');
   if (!container) return;
@@ -1447,17 +1494,18 @@ function renderMemberBalances(members, expenses) {
     else paidMap[p] = e.amount;
   });
 
-  const memberColors = ['#1A73E8', '#1E8E3E', '#9333EA', '#EA8600', '#D93025'];
+  const memberColors = ['#1A73E8', '#1E8E3E', '#9333EA', '#EA8600', '#D93025', '#0D9488', '#E11D48'];
 
-  container.innerHTML = members.map((m, idx) => {
+  const memberCardsHtml = members.map((m, idx) => {
     const paid = paidMap[m] || 0;
     const net = paid - fairShare;
     const isCreditor = net >= 0;
     const isFiltered = state.activeMemberFilter === m;
     const color = memberColors[idx % memberColors.length];
+    const isYou = state.currentUser && (m.trim().toLowerCase() === state.currentUser.full_name?.trim().toLowerCase());
 
     return `
-      <div onclick="filterExpensesByMember('${m}')" class="bg-white border ${isFiltered ? 'border-teal-600 ring-2 ring-teal-500/20' : 'border-[#E8EAED]'} rounded-2xl p-4 shadow-sm card-hover-3d space-y-2 cursor-pointer transition-all">
+      <div onclick="filterExpensesByMember('${m}')" class="bg-white border ${isFiltered ? 'border-teal-600 ring-2 ring-teal-500/20' : 'border-[#E8EAED]'} rounded-2xl p-4 shadow-sm card-hover-3d space-y-2 cursor-pointer transition-all relative">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shadow-sm" style="background-color: ${color}">
@@ -1465,12 +1513,22 @@ function renderMemberBalances(members, expenses) {
             </div>
             <div>
               <span class="text-xs font-bold text-[#202124] block">${m}</span>
-              <span class="text-[10px] text-[#5F6368]">${idx === 0 ? 'Trip Organizer' : 'Member'}</span>
+              ${isYou ? `
+                <span class="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">⭐ You (Organizer)</span>
+              ` : `
+                <span class="text-[10px] text-[#5F6368]">Co-Traveler</span>
+              `}
             </div>
           </div>
-          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isCreditor ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
-            ${isCreditor ? 'Gets Back' : 'Owes Group'}
-          </span>
+          
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isCreditor ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
+              ${isCreditor ? 'Gets Back' : 'Owes Group'}
+            </span>
+            ${!isYou ? `
+              <button onclick="handleRemoveTripMember('${m}', event)" title="Remove co-traveler" class="text-slate-400 hover:text-red-600 text-xs font-bold px-1 py-0.5 rounded hover:bg-slate-100 transition-colors">✕</button>
+            ` : ''}
+          </div>
         </div>
 
         <div class="flex items-baseline justify-between pt-1">
@@ -1492,6 +1550,21 @@ function renderMemberBalances(members, expenses) {
       </div>
     `;
   }).join('');
+
+  // Add Co-Traveler dashed card
+  const addCardHtml = `
+    <div onclick="openAddMemberModal()" class="border-2 border-dashed border-teal-300 hover:border-teal-600 bg-teal-50/40 hover:bg-teal-50/80 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all shadow-sm group min-h-[140px]">
+      <div class="w-10 h-10 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-lg shadow group-hover:scale-110 transition-transform">
+        +
+      </div>
+      <div class="text-center">
+        <p class="text-xs font-extrabold text-teal-900">+ Add Co-Traveler</p>
+        <p class="text-[10px] text-teal-700">Invite friend to your trip</p>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = memberCardsHtml + addCardHtml;
 }
 
 function renderExpensesFeed(expenses) {
@@ -1597,11 +1670,78 @@ async function markPaymentSettled(fromMember, toMember, amount) {
 }
 
 function openAddExpenseModal() {
+  const members = state.expensesData?.members || (state.currentUser ? [state.currentUser.full_name] : ['Arun Kumar']);
+  
+  // Dynamic payer dropdown
+  const payerSelect = document.getElementById('exp-payer');
+  if (payerSelect) {
+    payerSelect.innerHTML = members.map(m => {
+      const isSelected = state.currentUser && (m.trim().toLowerCase() === state.currentUser.full_name?.trim().toLowerCase());
+      return `<option value="${m}" ${isSelected ? 'selected' : ''}>${m} ${isSelected ? '(You)' : ''}</option>`;
+    }).join('');
+  }
+
+  // Dynamic split checkboxes
+  const splitContainer = document.getElementById('split-friends-container');
+  if (splitContainer) {
+    splitContainer.innerHTML = members.map(m => `
+      <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#F8F9FA] border border-[#E8EAED] cursor-pointer hover:bg-slate-100 transition-colors">
+        <input type="checkbox" name="split-friend" value="${m}" checked class="accent-[#1A73E8]">
+        <span class="text-xs font-semibold text-[#202124] truncate">${m}</span>
+      </label>
+    `).join('');
+  }
+
   document.getElementById('expense-modal').classList.remove('hidden');
 }
 
 function closeAddExpenseModal() {
   document.getElementById('expense-modal').classList.add('hidden');
+}
+
+function openAddMemberModal() {
+  const modal = document.getElementById('add-member-modal');
+  if (modal) modal.classList.remove('hidden');
+  const input = document.getElementById('new-member-name');
+  if (input) {
+    input.value = '';
+    setTimeout(() => input.focus(), 100);
+  }
+}
+
+function closeAddMemberModal() {
+  const modal = document.getElementById('add-member-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function submitAddMember(e) {
+  e.preventDefault();
+  const input = document.getElementById('new-member-name');
+  const name = input?.value?.trim();
+  if (!name) return;
+
+  try {
+    await apiCall(`/api/trips/${state.tripId}/members`, 'POST', { member_name: name });
+    closeAddMemberModal();
+    confetti({ particleCount: 40, spread: 40 });
+    showToast(`Added ${name} to your travel group!`, 'success');
+    await loadExpenses();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleRemoveTripMember(memberName, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm(`Remove ${memberName} from your travel group?`)) return;
+
+  try {
+    await apiCall(`/api/trips/${state.tripId}/members/${encodeURIComponent(memberName)}`, 'DELETE');
+    showToast(`Removed ${memberName} from trip.`, 'info');
+    await loadExpenses();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 async function submitNewExpense(e) {
@@ -1650,7 +1790,7 @@ async function triggerCompleteTripModal() {
     if (stlCountEl) stlCountEl.innerText = `${res.settlements_settled || 3} / ${res.settlements_settled || 3}`;
 
     // Render member final summary in ledger
-    const members = state.expensesData?.members || ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon'];
+    const members = state.expensesData?.members || (state.currentUser ? [state.currentUser.full_name, 'Karthik', 'Priya', 'Divya'] : ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon']);
     const totalSpent = res.total_spent || 31250;
     const share = members.length > 0 ? Math.round(totalSpent / members.length) : 0;
 
@@ -1687,7 +1827,7 @@ function closeCompleteTripModal() {
 function downloadTripSummaryReport() {
   const tripTitle = `${state.tripSource} to ${state.tripDestination} Trip`;
   const total = state.expensesData?.expenses?.reduce((s, e) => s + e.amount, 0) || 31250;
-  const members = state.expensesData?.members || ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon'];
+  const members = state.expensesData?.members || (state.currentUser ? [state.currentUser.full_name, 'Karthik', 'Priya', 'Divya'] : ['Arun Kumar', 'Karthik Rajan', 'Priya Sundaram', 'Divya Menon']);
   
   const reportLines = [
     `============================================================`,
@@ -1785,8 +1925,12 @@ function copySOSLink() {
 // Real-Time WebSocket Listener
 // -----------------------------------------------------------------------------
 function initWebSocket() {
+  if (state.socket) {
+    try { state.socket.close(); } catch (e) {}
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/trip/trip-ooty-01`;
+  const tripId = state.tripId || 'trip-usr-1';
+  const wsUrl = `${protocol}//${window.location.host}/ws/trip/${tripId}`;
 
   try {
     state.socket = new WebSocket(wsUrl);
@@ -1819,8 +1963,8 @@ function initWebSocket() {
 // -----------------------------------------------------------------------------
 // Initialize on Page Load (Preload all data so NO screen is empty!)
 // -----------------------------------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
-  initAuth();
+window.addEventListener('DOMContentLoaded', async () => {
+  await initAuth();
   initWebSocket();
   calculateDynamicDistance(state.tripSource, state.tripDestination);
   loadContract();

@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from backend.database import get_db_connection, hash_password, verify_password
+from backend.database import get_db_connection, get_auth_db_connection, get_user_db_connection, resolve_user_db_conn, hash_password, verify_password
 from backend.auth import create_access_token, get_current_user, get_optional_user
 from backend.schemas import (
     UserRegister, UserLogin, AuthResponse, UserResponse,
@@ -111,6 +111,12 @@ def register_user(req: UserRegister):
     conn.close()
 
     token = create_access_token({"sub": user_id, "email": req.email, "name": req.full_name})
+    # Initialize dedicated isolated database file for this user
+    try:
+        get_user_db_connection(user_id, req.full_name).close()
+    except Exception as e:
+        print(f"Warning initializing isolated user db: {e}")
+
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -136,7 +142,15 @@ def login_user(req: UserLogin):
     if not row or not verify_password(req.password, row["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    token = create_access_token({"sub": row["id"], "email": row["email"], "name": row["full_name"]})
+    user_id = row["id"]
+    user_name = row["full_name"]
+    # Ensure dedicated isolated database exists for this user
+    try:
+        get_user_db_connection(user_id, user_name).close()
+    except Exception as e:
+        print(f"Warning ensuring isolated user db: {e}")
+
+    token = create_access_token({"sub": user_id, "email": row["email"], "name": user_name})
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -181,45 +195,122 @@ def get_demo_users():
 
 
 # ==============================================================================
-# 2. TRIP MANAGEMENT
+# 2. USER ACTIVE TRIP & DYNAMIC GROUP MANAGEMENT
 # ==============================================================================
+
+@app.get("/api/user/active-trip")
+def get_user_active_trip(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    """
+    Returns the active trip for the logged-in user from their isolated database.
+    Guarantees that each user sees only THEIR group, THEIR expenses, and THEIR return contract!
+    """
+    user_id = user["id"] if user else "usr-1"
+    user_name = user["full_name"] if user else "Arun Kumar"
+    
+    conn = get_user_db_connection(user_id, user_name)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM trips ORDER BY created_at DESC LIMIT 1")
+    trip_row = cursor.fetchone()
+    
+    if not trip_row:
+        init_isolated_user_db(conn, user_id, user_name)
+        cursor.execute("SELECT * FROM trips ORDER BY created_at DESC LIMIT 1")
+        trip_row = cursor.fetchone()
+
+    trip_dict = dict(trip_row)
+    trip_dict["owner_name"] = user_name
+    
+    cursor.execute("SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (trip_dict["id"],))
+    members = [dict(m) for m in cursor.fetchall()]
+    
+    conn.close()
+    
+    return {
+        "trip": trip_dict,
+        "members": members,
+        "is_owner": trip_dict.get("owner_id") == user_id,
+        "user_db": f"{user_id}.db"
+    }
+
+
+@app.post("/api/trips/{trip_id}/members")
+def add_trip_member(trip_id: str, payload: Dict[str, str], user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    member_name = payload.get("member_name", "").strip()
+    if not member_name:
+        raise HTTPException(status_code=400, detail="Member name cannot be empty")
+        
+    conn = resolve_user_db_conn(user, trip_id)
+    cursor = conn.cursor()
+    
+    # Check if already in trip
+    cursor.execute("SELECT id FROM trip_members WHERE trip_id = ? AND LOWER(member_name) = LOWER(?)", (trip_id, member_name))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail="Member already exists in this trip")
+        
+    now = datetime.now(timezone.utc).isoformat()
+    cursor.execute("""
+    INSERT INTO trip_members (trip_id, user_id, member_name, role, joined_at)
+    VALUES (?, ?, ?, 'MEMBER', ?)
+    """, (trip_id, f"guest-{uuid.uuid4().hex[:6]}", member_name, now))
+    
+    cursor.execute("UPDATE trips SET group_size = (SELECT COUNT(*) FROM trip_members WHERE trip_id = ?) WHERE id = ?", (trip_id, trip_id))
+    conn.commit()
+    conn.close()
+    
+    return {"message": f"{member_name} added to the trip successfully"}
+
+
+@app.delete("/api/trips/{trip_id}/members/{member_name}")
+def remove_trip_member(trip_id: str, member_name: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM trip_members WHERE trip_id = ? AND LOWER(member_name) = LOWER(?)", (trip_id, member_name.strip()))
+    cursor.execute("UPDATE trips SET group_size = (SELECT COUNT(*) FROM trip_members WHERE trip_id = ?) WHERE id = ?", (trip_id, trip_id))
+    conn.commit()
+    conn.close()
+    return {"message": f"{member_name} removed from trip"}
+
 
 @app.get("/api/trips")
 def list_trips(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
-    conn = get_db_connection()
+    user_id = user["id"] if user else "usr-1"
+    user_name = user["full_name"] if user else "Arun Kumar"
+    conn = get_user_db_connection(user_id, user_name)
     cursor = conn.cursor()
-    cursor.execute("""
-    SELECT t.*, u.full_name as owner_name,
-    (SELECT COUNT(*) FROM trip_members WHERE trip_id = t.id) as member_count
-    FROM trips t
-    JOIN users u ON t.owner_id = u.id
-    ORDER BY t.created_at DESC
-    """)
+    cursor.execute("SELECT * FROM trips ORDER BY created_at DESC")
     rows = cursor.fetchall()
-    trips = [dict(r) for r in rows]
+    trips = []
+    for r in rows:
+        t = dict(r)
+        t["owner_name"] = user_name
+        cursor.execute("SELECT COUNT(*) FROM trip_members WHERE trip_id = ?", (t["id"],))
+        t["member_count"] = cursor.fetchone()[0]
+        trips.append(t)
     conn.close()
     return {"trips": trips}
 
 
 @app.get("/api/trips/{trip_id}")
-def get_trip_details(trip_id: str):
-    conn = get_db_connection()
+def get_trip_details(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
-    cursor.execute("""
-    SELECT t.*, u.full_name as owner_name 
-    FROM trips t
-    JOIN users u ON t.owner_id = u.id
-    WHERE t.id = ?
-    """, (trip_id,))
+    cursor.execute("SELECT * FROM trips WHERE id = ?", (trip_id,))
     trip = cursor.fetchone()
+    if not trip:
+        cursor.execute("SELECT * FROM trips ORDER BY created_at DESC LIMIT 1")
+        trip = cursor.fetchone()
+
     if not trip:
         conn.close()
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    cursor.execute("SELECT * FROM trip_members WHERE trip_id = ?", (trip_id,))
+    trip_dict = dict(trip)
+    cursor.execute("SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (trip_dict["id"],))
     members = [dict(m) for m in cursor.fetchall()]
 
-    cursor.execute("SELECT * FROM return_contracts WHERE trip_id = ?", (trip_id,))
+    cursor.execute("SELECT * FROM return_contracts WHERE trip_id = ?", (trip_dict["id"],))
     contract_row = cursor.fetchone()
     contract = dict(contract_row) if contract_row else None
 
@@ -233,13 +324,13 @@ def get_trip_details(trip_id: str):
             "is_safe_checked_in": bool(contract["is_safe_checked_in"]),
             "last_check_in": contract["last_check_in"],
             "last_known_coords": {
-                "lat": contract["last_known_lat"] or trip["current_lat"] or 11.4102,
-                "lng": contract["last_known_lng"] or trip["current_lng"] or 76.6958
+                "lat": contract["last_known_lat"] or trip_dict.get("current_lat") or 11.4102,
+                "lng": contract["last_known_lng"] or trip_dict.get("current_lng") or 76.6958
             }
         })
 
     return {
-        "trip": dict(trip),
+        "trip": trip_dict,
         "members": members,
         "return_contract": contract,
         "contract_live_evaluation": contract_status_eval
@@ -249,10 +340,11 @@ def get_trip_details(trip_id: str):
 @app.post("/api/trips")
 def create_trip(req: TripCreate, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     user_id = user["id"] if user else "usr-1"
+    user_name = user["full_name"] if user else "Arun Kumar"
     trip_id = f"trip-{uuid.uuid4().hex[:8]}"
     now = datetime.now(timezone.utc).isoformat()
 
-    conn = get_db_connection()
+    conn = get_user_db_connection(user_id, user_name)
     cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO trips (id, title, source, destination, start_date, end_date, group_size, target_budget, owner_id, status, current_lat, current_lng, created_at)
@@ -266,16 +358,16 @@ def create_trip(req: TripCreate, user: Optional[Dict[str, Any]] = Depends(get_op
     # Add owner and requested members
     cursor.execute("""
     INSERT INTO trip_members (trip_id, user_id, member_name, role, joined_at)
-    VALUES (?, ?, ?, ?, ?)
-    """, (trip_id, user_id, user["full_name"] if user else "Arun Kumar", "OWNER", now))
+    VALUES (?, ?, ?, 'ORGANIZER', ?)
+    """, (trip_id, user_id, user_name, now))
 
     if req.member_names:
         for m_name in req.member_names:
-            if m_name != (user["full_name"] if user else "Arun Kumar"):
+            if m_name != user_name:
                 cursor.execute("""
                 INSERT INTO trip_members (trip_id, user_id, member_name, role, joined_at)
-                VALUES (?, ?, ?, ?, ?)
-                """, (trip_id, f"guest-{uuid.uuid4().hex[:6]}", m_name, "MEMBER", now))
+                VALUES (?, ?, ?, 'MEMBER', ?)
+                """, (trip_id, f"guest-{uuid.uuid4().hex[:6]}", m_name, now))
 
     # Create default return contract 1 day ahead 18:00
     default_return = (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=18, minute=0, second=0).isoformat()
@@ -295,12 +387,12 @@ def create_trip(req: TripCreate, user: Optional[Dict[str, Any]] = Depends(get_op
 # ==============================================================================
 
 @app.post("/api/trips/{trip_id}/location")
-async def update_trip_location(trip_id: str, loc: TripUpdateLocation):
+async def update_trip_location(trip_id: str, loc: TripUpdateLocation, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
     Receives live traveler coordinates, checks for geofence breach against accident blackspots,
     updates DB, and broadcasts event to WebSocket peers.
     """
-    conn = get_db_connection()
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE trips SET current_lat = ?, current_lng = ? WHERE id = ?
@@ -535,12 +627,12 @@ def get_driving_distance(origin: str = "Chennai", destination: str = "Ooty"):
 
 
 @app.post("/api/trips/{trip_id}/complete")
-def complete_and_archive_trip(trip_id: str):
+def complete_and_archive_trip(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
     Finalizes and archives a completed group trip, marks all debts as settled,
     and returns a full financial trip report.
     """
-    conn = get_db_connection()
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("UPDATE trips SET status = 'COMPLETED' WHERE id = ?", (trip_id,))
     
@@ -1068,8 +1160,8 @@ def get_ncrb_crime_stats():
 # ==============================================================================
 
 @app.get("/api/safety/contract/{trip_id}")
-def get_contract_status(trip_id: str):
-    conn = get_db_connection()
+def get_contract_status(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM return_contracts WHERE trip_id = ?", (trip_id,))
     row = cursor.fetchone()
@@ -1096,8 +1188,8 @@ def get_contract_status(trip_id: str):
 
 
 @app.post("/api/safety/contract/{trip_id}")
-async def set_return_contract(trip_id: str, req: ReturnContractCreate):
-    conn = get_db_connection()
+async def set_return_contract(trip_id: str, req: ReturnContractCreate, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     now = datetime.now(timezone.utc).isoformat()
     cursor.execute("""
@@ -1125,12 +1217,12 @@ async def set_return_contract(trip_id: str, req: ReturnContractCreate):
 
 
 @app.post("/api/safety/checkin/{trip_id}")
-async def perform_safe_checkin(trip_id: str, req: SafeCheckinRequest):
+async def perform_safe_checkin(trip_id: str, req: SafeCheckinRequest, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
     Group marks safe arrival. Disarms the return-time contract alarm.
     """
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_db_connection()
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE return_contracts
@@ -1156,7 +1248,7 @@ async def perform_safe_checkin(trip_id: str, req: SafeCheckinRequest):
 
 
 @app.post("/api/safety/simulate-overdue/{trip_id}")
-async def simulate_overdue_alarm(trip_id: str):
+async def simulate_overdue_alarm(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
     Simulates a missed check-in return contract (sets expected return to 45 mins ago).
     Demonstrates the background anomaly detection with last known location flagging!
@@ -1164,7 +1256,7 @@ async def simulate_overdue_alarm(trip_id: str):
     past_time = (datetime.now(timezone.utc) - timedelta(minutes=45)).isoformat()
     now = datetime.now(timezone.utc).isoformat()
 
-    conn = get_db_connection()
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE return_contracts
@@ -1283,8 +1375,8 @@ async def trigger_sos_broadcast(req: SOSBroadcastRequest):
 
 
 @app.delete("/api/expenses/{trip_id}/{expense_id}")
-async def delete_expense(trip_id: str, expense_id: str):
-    conn = get_db_connection()
+async def delete_expense(trip_id: str, expense_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM expenses WHERE trip_id = ? AND id = ?", (trip_id, expense_id))
     conn.commit()
@@ -1297,24 +1389,41 @@ async def delete_expense(trip_id: str, expense_id: str):
 # ==============================================================================
 
 @app.get("/api/expenses/{trip_id}")
-def get_trip_expenses(trip_id: str):
-    conn = get_db_connection()
+def get_trip_expenses(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     
     # Get members
-    cursor.execute("SELECT member_name FROM trip_members WHERE trip_id = ?", (trip_id,))
+    cursor.execute("SELECT member_name FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (trip_id,))
     members = [r["member_name"] for r in cursor.fetchall()]
     if not members:
-        members = ["Arun Kumar", "Karthik Rajan", "Priya Sundaram", "Divya Menon"]
+        # Check if trip exists under another ID in this DB
+        cursor.execute("SELECT id FROM trips LIMIT 1")
+        row = cursor.fetchone()
+        if row:
+            cursor.execute("SELECT member_name FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (row["id"],))
+            members = [r["member_name"] for r in cursor.fetchall()]
+    if not members:
+        if user and user.get("full_name"):
+            members = [user["full_name"], "Karthik", "Priya", "Divya"]
+        else:
+            members = ["Arun Kumar", "Karthik Rajan", "Priya Sundaram", "Divya Menon"]
 
     # Get expenses
     cursor.execute("SELECT * FROM expenses WHERE trip_id = ? ORDER BY created_at DESC", (trip_id,))
     expense_rows = cursor.fetchall()
+    if not expense_rows:
+        # Check if expenses exist for any trip in this user's DB
+        cursor.execute("SELECT * FROM expenses ORDER BY created_at DESC")
+        expense_rows = cursor.fetchall()
     
     expenses = []
     for r in expense_rows:
         item = dict(r)
-        item["split_among"] = json.loads(item["split_members_json"])
+        try:
+            item["split_among"] = json.loads(item["split_members_json"])
+        except Exception:
+            item["split_among"] = members
         expenses.append(item)
 
     # Calculate optimal settlement
@@ -1331,6 +1440,7 @@ def get_trip_expenses(trip_id: str):
     conn.close()
 
     return {
+        "trip_id": trip_id,
         "members": members,
         "expenses": expenses,
         "settlement_report": settlement_report
@@ -1338,23 +1448,24 @@ def get_trip_expenses(trip_id: str):
 
 
 @app.post("/api/expenses/{trip_id}")
-async def add_expense(trip_id: str, exp: ExpenseCreate):
-    conn = get_db_connection()
+async def add_expense(trip_id: str, exp: ExpenseCreate, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
 
     # Get members if split_among not provided
     cursor.execute("SELECT member_name FROM trip_members WHERE trip_id = ?", (trip_id,))
     all_members = [r["member_name"] for r in cursor.fetchall()]
-    split_members = exp.split_among if exp.split_among else all_members
+    split_members = exp.split_among if exp.split_among else (all_members if all_members else [exp.payer_name])
 
     expense_id = f"exp-{uuid.uuid4().hex[:8]}"
     now = datetime.now(timezone.utc).isoformat()
+    payer_id = user["id"] if user else "usr-traveler"
 
     cursor.execute("""
     INSERT INTO expenses (id, trip_id, payer_id, payer_name, description, amount, category, split_members_json, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        expense_id, trip_id, "usr-demo", exp.payer_name, exp.description,
+        expense_id, trip_id, payer_id, exp.payer_name, exp.description,
         exp.amount, exp.category, json.dumps(split_members), now
     ))
     conn.commit()
@@ -1379,13 +1490,13 @@ async def add_expense(trip_id: str, exp: ExpenseCreate):
 
 
 @app.post("/api/expenses/{trip_id}/mark-paid")
-async def mark_settlement_paid(trip_id: str, payload: Dict[str, Any]):
+async def mark_settlement_paid(trip_id: str, payload: Dict[str, Any], user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     from_member = payload.get("from_member")
     to_member = payload.get("to_member")
     amount = payload.get("amount", 0.0)
     status_str = payload.get("status", "PAID")
     
-    conn = get_db_connection()
+    conn = resolve_user_db_conn(user, trip_id)
     cursor = conn.cursor()
     settlement_id = f"stl-{uuid.uuid4().hex[:6]}"
     now = datetime.now(timezone.utc).isoformat()
