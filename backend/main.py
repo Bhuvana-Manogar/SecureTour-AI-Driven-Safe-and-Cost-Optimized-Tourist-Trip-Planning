@@ -998,27 +998,72 @@ async def simulate_overdue_alarm(trip_id: str):
 @app.post("/api/safety/sos")
 async def trigger_sos_broadcast(req: SOSBroadcastRequest):
     """
-    Dispatches immediate distress beacon, finds nearest highway police and hospitals,
-    and broadcasts to all connected group peers via WebSocket.
+    Dispatches immediate distress beacon using traveler's actual emergency contact,
+    finds nearest highway police, and returns 1-click direct phone call and WhatsApp links.
     """
+    import urllib.parse
     nearby = chroma_engine.query_location_hazards(req.latitude, req.longitude, radius_km=25.0)
     nearest_spot = nearby[0] if nearby else None
 
-    # Fetch emergency contacts for demo trip
+    # Fetch emergency contact of this specific user from DB if available
+    user_emergency_name = req.emergency_contact_name
+    user_emergency_phone = req.emergency_contact_phone
+    traveler_name = req.user_name or "Traveler"
+
+    if req.user_id:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT full_name, emergency_contact_name, emergency_contact_phone FROM users WHERE id = ?", (req.user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            if not traveler_name or traveler_name == "Arun Kumar":
+                traveler_name = row["full_name"]
+            if not user_emergency_name and row["emergency_contact_name"]:
+                user_emergency_name = row["emergency_contact_name"]
+            if not user_emergency_phone and row["emergency_contact_phone"]:
+                user_emergency_phone = row["emergency_contact_phone"]
+
+    if not user_emergency_name:
+        user_emergency_name = "Venkatesh (Primary Emergency Contact)"
+    if not user_emergency_phone:
+        user_emergency_phone = "+91 98401 99999"
+
     contacts = [
-        {"name": "Venkatesh (Arun's Father)", "phone": "+91 98401 99999"},
-        {"name": "Meena (Karthik's Mother)", "phone": "+91 98402 88888"},
-        {"name": "Tamil Nadu ERSS State Control Room", "phone": "112"}
+        {"name": user_emergency_name, "phone": user_emergency_phone, "relation": "Personal Emergency Contact"},
+        {"name": "National Emergency Police ERSS", "phone": "112", "relation": "State Police Control Room"},
+        {"name": "Highway Accident Assistance", "phone": "1033", "relation": "National Highway Patrol"},
+        {"name": "Emergency Medical Ambulance", "phone": "108", "relation": "Highway Ambulance"}
     ]
 
     dispatch = geofence_service.generate_sos_dispatch(
         trip_name=req.trip_name,
-        user_name=req.user_name,
+        user_name=traveler_name,
         current_lat=req.latitude,
         current_lng=req.longitude,
         emergency_contacts=contacts,
         nearest_hazard=nearest_spot
     )
+
+    clean_phone = "".join(ch for ch in user_emergency_phone if ch.isdigit() or ch == "+")
+    clean_digits = "".join(ch for ch in user_emergency_phone if ch.isdigit())
+    maps_link = f"https://maps.google.com/?q={req.latitude:.4f},{req.longitude:.4f}"
+    sms_text = f"🚨 EMERGENCY SOS: {traveler_name} is in distress near GPS ({req.latitude:.4f}, {req.longitude:.4f}). Location link: {maps_link}. Please call or send emergency rescue immediately!"
+    encoded_text = urllib.parse.quote(sms_text)
+
+    dispatch["emergency_actions"] = {
+        "traveler_name": traveler_name,
+        "contact_name": user_emergency_name,
+        "contact_phone": user_emergency_phone,
+        "call_tel_url": f"tel:{clean_phone}",
+        "whatsapp_url": f"https://wa.me/{clean_digits}?text={encoded_text}",
+        "sms_url": f"sms:{clean_phone}?body={encoded_text}",
+        "police_tel_url": "tel:112",
+        "ambulance_tel_url": "tel:108",
+        "highway_tel_url": "tel:1033",
+        "google_maps_url": maps_link,
+        "sms_message_body": sms_text
+    }
 
     # Broadcast to all peers in active trip
     trip_id = "trip-ooty-01"
@@ -1028,6 +1073,16 @@ async def trigger_sos_broadcast(req: SOSBroadcastRequest):
     })
 
     return dispatch
+
+
+@app.delete("/api/expenses/{trip_id}/{expense_id}")
+async def delete_expense(trip_id: str, expense_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM expenses WHERE trip_id = ? AND id = ?", (trip_id, expense_id))
+    conn.commit()
+    conn.close()
+    return {"message": "Expense deleted successfully"}
 
 
 # ==============================================================================

@@ -91,9 +91,11 @@ class MarkSettlementPaid(BaseModel):
     settlement_id: str
 
 
-# --- SOS Request ---
 class SOSBroadcastRequest(BaseModel):
     latitude: float
     longitude: float
     user_name: Optional[str] = "Arun Kumar"
-    trip_name: Optional[str] = "Chennai to Ooty Friends Trip"
+    user_id: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    trip_name: Optional[str] = "Group Travel Shield"
