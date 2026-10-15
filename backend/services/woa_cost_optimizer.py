@@ -43,6 +43,12 @@ class WhaleCostOptimizer:
         x[3]: Sightseeing & Permits (entry tickets, boat house, hill station entry)
         x[4]: Emergency Safety Fund (essential contingency for hill station medical/breakdown)
         """
+        # Defensive edge-case clamping
+        group_size = max(1, min(50, int(group_size or 4)))
+        duration_days = max(1, min(30, int(duration_days or 4)))
+        distance_km = max(10.0, float(distance_km or 540.0))
+        target_budget = max(5000.0, float(target_budget or 48000.0))
+
         dim = 5
         
         # Vehicle fuel efficiency and cost estimation
@@ -52,7 +58,7 @@ class WhaleCostOptimizer:
             "tempo_traveller": {"km_per_liter": 8.0, "toll_cost": 1200, "ghat_penalty": 1.40},
             "bus": {"km_per_liter": 5.0, "toll_cost": 1800, "ghat_penalty": 1.50}
         }
-        veh = fuel_rates.get(vehicle_type.lower(), fuel_rates["car"])
+        veh = fuel_rates.get(str(vehicle_type).lower(), fuel_rates["car"])
         fuel_price_per_liter = 103.0  # Tamil Nadu average petrol/diesel
         
         # Realistic empirical base costs
