@@ -1,4 +1,12 @@
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 node_modules/
 .env
+auth.db
+backend/data/user_dbs/
+*.log
+.vscode/
+.idea/
+.DS_Store

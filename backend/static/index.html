@@ -105,6 +105,29 @@
       transform: translateY(-3px);
       box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.1), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
     }
+    /* Google Maps Driving Navigation 3D Chevron Arrow & Radar Halo */
+    .gmap-nav-chevron-wrapper {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-origin: center center;
+      transition: transform 0.35s ease-out;
+    }
+    .gmap-chevron-halo {
+      position: absolute;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(26, 115, 232, 0.35) 0%, rgba(26, 115, 232, 0.08) 55%, transparent 75%);
+      animation: sonar-wave 1.8s infinite ease-out;
+      pointer-events: none;
+    }
+    .gmap-chevron-arrow {
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#F8F9FA] text-[#202124] antialiased selection:bg-[#1A73E8] selection:text-white">
@@ -142,20 +165,30 @@
         </div>
       </div>
 
-      <!-- Quick Dynamic Search Planner Pill (Replaces hardcoded corridor selector) -->
-      <div class="hidden lg:flex items-center gap-2 bg-[#F1F3F4] hover:bg-[#E8EAED] transition-colors px-3 py-1.5 rounded-2xl border border-slate-200 text-xs">
-        <div class="flex items-center gap-1.5 font-semibold text-[#3C4043]">
-          <span class="w-2 h-2 rounded-full bg-[#1E8E3E]"></span>
-          <span id="quick-source-label">Chennai</span>
-        </div>
-        <span class="text-[#80868B] font-bold">➔</span>
-        <div class="flex items-center gap-1.5 font-semibold text-[#3C4043]">
-          <span class="w-2 h-2 rounded-full bg-[#D93025]"></span>
-          <span id="quick-dest-label">Ooty</span>
-        </div>
-        <button onclick="switchTab('plan')" class="ml-2 text-xs font-bold text-[#1A73E8] hover:underline">
-          Change Trip
+      <!-- Group Trip Switcher & Creation Hub -->
+      <div id="header-quick-trip-pill" class="relative flex items-center gap-2">
+        <button onclick="toggleTripSwitcherDropdown(event)" class="flex items-center gap-2 bg-[#F1F3F4] hover:bg-[#E8EAED] transition-colors px-3 py-1.5 rounded-2xl border border-slate-200 text-xs font-semibold text-[#3C4043] shadow-sm">
+          <span class="text-sm">✈️</span>
+          <span id="header-active-trip-title" class="font-extrabold text-[#202124] max-w-[160px] truncate">Trip Expedition</span>
+          <span class="text-[#80868B] text-[10px]">▼</span>
         </button>
+
+        <button onclick="openCreateGroupTripModal()" class="px-3 py-1.5 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white text-xs font-extrabold shadow-sm flex items-center gap-1 transition-all" title="Create a new trip and invite friends">
+          <span>➕ New Group Trip</span>
+        </button>
+
+        <!-- Dropdown Menu of User's Trips -->
+        <div id="header-trips-dropdown" class="hidden absolute top-full left-0 mt-2 w-72 bg-white border border-[#E8EAED] rounded-2xl shadow-2xl p-3 z-50">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#F1F3F4]">
+            <span class="text-[10px] font-black uppercase tracking-wider text-[#5F6368]">Your Group Trips</span>
+            <button onclick="openCreateGroupTripModal()" class="text-[10px] font-extrabold text-[#1A73E8] hover:underline">
+              + New Trip
+            </button>
+          </div>
+          <div id="header-trips-dropdown-list" class="space-y-1.5 max-h-56 overflow-y-auto steps-scroll">
+            <!-- Dynamically populated via app.js -->
+          </div>
+        </div>
       </div>
 
       <!-- Right Actions: Emergency SOS & Real User Login -->
@@ -168,43 +201,62 @@
         </button>
 
         <!-- User Authentication & Profile (Real Login/Register) -->
-        <div id="auth-section">
-          <!-- Logged Out State -->
-          <div id="auth-logged-out" class="flex items-center gap-2">
-            <button onclick="openLoginModal()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#1A73E8] hover:bg-blue-50 border border-blue-200 transition-colors">
-              Sign In
+        <div id="auth-section" class="relative">
+          <!-- Logged Out State (Guest Mode) -->
+          <div id="auth-logged-out" class="flex items-center gap-1.5 sm:gap-2">
+            <button onclick="switchTab('login'); showAuthPageTab('login')" class="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A73E8] hover:bg-blue-50 border border-blue-200 transition-colors shadow-sm flex items-center gap-1">
+              <span>🔑 Sign In</span>
             </button>
-            <button onclick="openRegisterModal()" class="hidden sm:inline-block px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#1A73E8] hover:bg-[#1557B0] text-white shadow-sm transition-colors">
-              Register
+            <button onclick="switchTab('login'); showAuthPageTab('register')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1A73E8] hover:bg-[#1557B0] text-white shadow-sm transition-colors flex items-center gap-1">
+              <span>👤 Register</span>
+            </button>
+            <button onclick="quickLoginDemo('arun@securetour.ai')" class="hidden md:inline-block px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-[#5F6368] hover:text-[#202124] hover:bg-slate-100 border border-slate-200 transition-colors" title="Quick Demo Login">
+              Demo
             </button>
           </div>
 
           <!-- Logged In Profile State -->
-          <div id="auth-logged-in" class="hidden relative">
-            <button onclick="toggleProfileDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F1F3F4] hover:bg-[#E8EAED] border border-[#DADCE0] text-xs font-semibold text-[#202124]">
+          <div id="auth-logged-in" class="hidden flex items-center gap-2">
+            <button id="profile-btn-trigger" onclick="toggleProfileDropdown(event)" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F1F3F4] hover:bg-[#E8EAED] border border-[#DADCE0] text-xs font-semibold text-[#202124] transition-all">
               <div id="user-avatar-initial" class="w-6 h-6 rounded-full bg-[#1A73E8] text-white flex items-center justify-center font-bold text-[11px] shadow-sm">
-                A
+                B
               </div>
-              <span id="user-display-name-header" class="hidden sm:inline">Arun Kumar</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-500"><path d="m6 9 6 6 6-6"/></svg>
+              <span id="user-display-name-header" class="hidden sm:inline font-bold">Bhuvaneshwari M</span>
+              <span id="user-db-header-pill" class="hidden lg:inline text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">🗄️ SQL DB: securetour.db</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-500"><path d="m6 9 6 6 6-6"/></svg>
             </button>
 
-            <!-- Profile Dropdown Menu -->
-            <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-72 bg-white border border-[#E8EAED] rounded-2xl shadow-2xl p-3 z-50">
-              <div class="border-b border-[#E8EAED] pb-3 mb-2">
-                <p id="profile-user-name" class="text-sm font-extrabold text-[#202124]">Arun Kumar</p>
-                <p id="profile-user-email" class="text-xs text-[#5F6368]">arun@securetour.ai</p>
-                <p id="profile-user-phone" class="text-xs text-[#5F6368] font-mono mt-0.5">+91 98401 23456</p>
+            <!-- Direct 1-Click Sign Out Button (Always Available in Header on Every Page!) -->
+            <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 shadow-sm flex items-center gap-1.5 transition-all" title="Sign out of account">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="hidden sm:inline">Log Out</span>
+            </button>
+
+            <!-- Profile Dropdown Menu (Details & Contact) -->
+            <div id="profile-dropdown-menu" class="hidden absolute right-0 top-full mt-2 w-72 bg-white border border-[#E8EAED] rounded-2xl shadow-2xl p-3.5 z-50 transition-all">
+              <div class="border-b border-[#E8EAED] pb-3 mb-2.5">
+                <div class="flex items-center justify-between">
+                  <p id="profile-user-name" class="text-sm font-extrabold text-[#202124]">Bhuvaneshwari M</p>
+                  <span id="profile-user-db-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-[#1A73E8] border border-blue-200 font-bold">securetour.db (SQL)</span>
+                </div>
+                <p id="profile-user-email" class="text-xs text-[#5F6368] mt-0.5">manogarbhuvana@gmail.com</p>
+                <p id="profile-user-phone" class="text-xs text-[#5F6368] font-mono mt-0.5">+91 63800 03117</p>
               </div>
 
-              <!-- Emergency Contact Telemetry Info -->
+              <!-- Emergency Contact Info -->
               <div class="bg-red-50/70 border border-red-200/80 rounded-xl p-2.5 text-xs text-red-900 space-y-1 mb-3">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-red-700 block">Assigned Emergency Contact</span>
-                <p class="font-extrabold" id="profile-emergency-name">Venkatesh (Father)</p>
-                <p class="font-mono text-[11px]" id="profile-emergency-phone">+91 98401 99999</p>
+                <p class="font-extrabold" id="profile-emergency-name">father</p>
+                <p class="font-mono text-[11px]" id="profile-emergency-phone">+91 63800 03117</p>
               </div>
 
-              <button onclick="handleLogout()" class="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2">
+              <!-- View Profile Page Button -->
+              <button onclick="switchTab('profile'); toggleProfileDropdown(event)" class="w-full text-left px-3 py-2 text-xs font-bold text-[#1A73E8] hover:bg-blue-50 rounded-xl transition-colors flex items-center gap-2 border border-blue-100 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Traveler Profile & DB Details</span>
+              </button>
+
+              <button onclick="handleLogout()" class="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2 border border-red-100">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 <span>Sign Out of Account</span>
               </button>
@@ -219,7 +271,7 @@
   <!-- ========================================================================= -->
   <!-- 2. CONSUMER NAVIGATION TABS -->
   <!-- ========================================================================= -->
-  <div class="bg-white border-b border-[#E8EAED] px-4 lg:px-8 py-2 sticky top-[57px] z-30 shadow-sm">
+  <div id="main-app-nav-bar" class="bg-white border-b border-[#E8EAED] px-4 lg:px-8 py-2 sticky top-[57px] z-30 shadow-sm transition-all duration-300">
     <div class="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto gap-2">
       <nav class="flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
         
@@ -248,6 +300,11 @@
           <span>5. Splitwise & Settle Up</span>
         </button>
 
+        <button onclick="switchTab('profile')" id="tab-btn-profile" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-[#5F6368] hover:text-[#202124] hover:bg-[#F1F3F4] transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>6. Traveler Profile & DB</span>
+        </button>
+
       </nav>
 
       <!-- Highway Police Contact Tag -->
@@ -264,6 +321,311 @@
   <!-- 3. MAIN APPLICATION CONTENT -->
   <!-- ========================================================================= -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
+
+    <!-- Real-Time Pending Trip Invitations Banner -->
+    <div id="trip-invitations-banner" class="hidden bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-2xl p-4 shadow-lg mb-6 transition-all duration-300">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-xl flex-shrink-0">
+            🔔
+          </span>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">GROUP TRIP INVITATION</span>
+              <span id="invitation-timestamp" class="text-[10px] text-amber-100">Action Required</span>
+            </div>
+            <p id="invitation-text" class="text-sm font-extrabold mt-0.5 leading-snug">
+              <span id="invitation-banner-sender" class="underline">Arun Kumar</span> invited you to join <strong id="invitation-banner-title" class="text-yellow-200">"Goa Beach Roadtrip 2026"</strong> (<span id="invitation-banner-route">Chennai ➔ Goa</span>)
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+          <button id="btn-accept-inv" onclick="respondToActiveInvitation('accept')" class="px-4 py-2 rounded-xl bg-white text-amber-900 hover:bg-amber-50 font-black text-xs shadow-md transition-all">
+            ✓ Accept & Join Trip
+          </button>
+          <button id="btn-decline-inv" onclick="respondToActiveInvitation('decline')" class="px-3 py-2 rounded-xl bg-black/20 hover:bg-black/30 text-white font-bold text-xs transition-all">
+            ✕ Decline
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Persistent Guest Mode Banner (visible only when logged out) -->
+    <div id="guest-mode-banner" class="hidden bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50 border border-blue-200/80 rounded-2xl p-3.5 px-5 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-3 text-[#202124]">
+        <span class="w-9 h-9 rounded-xl bg-blue-100 text-[#1A73E8] flex items-center justify-center font-bold text-base flex-shrink-0 shadow-sm">
+          👤
+        </span>
+        <div>
+          <p class="font-bold text-[#202124] text-xs">You are currently browsing in Guest Mode</p>
+          <p class="text-[#5F6368] text-[11px] mt-0.5">Sign in to activate your dedicated isolated database, save custom routes, customize Splitwise friends, and lock your personal emergency contacts.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('login'); showAuthPageTab('login')" class="px-4 py-2 rounded-xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-sm transition-all">Sign In</button>
+        <button onclick="switchTab('login'); showAuthPageTab('register')" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#3C4043] border border-slate-300 font-bold text-xs transition-all">Create Account</button>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- DEDICATED AUTH PAGE: SIGN IN & CREATE PROFILE (GATEWAY) -->
+    <!-- ========================================================================= -->
+    <section id="view-login" class="tab-view hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto my-2">
+        <!-- Left Hero: Branding, Architecture & Trust Signals -->
+        <div class="lg:col-span-6 bg-gradient-to-br from-[#1A73E8] via-[#1557B0] to-[#0D47A1] text-white rounded-3xl p-8 flex flex-col justify-between shadow-xl relative overflow-hidden">
+          <div class="relative z-10 space-y-6">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white font-black text-xl shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-black tracking-tight">SecureTour <span class="text-amber-300">AI</span></h2>
+                <p class="text-xs text-blue-100 font-semibold">Real-Time Travel Safety, GPS Navigation & Splitwise</p>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <h1 class="text-3xl font-extrabold tracking-tight leading-tight">
+                Sign in to your private journey & isolated safety database.
+              </h1>
+              <p class="text-sm text-blue-100 leading-relaxed">
+                Every traveler account receives an independent SQLite database (<code class="bg-white/20 px-1.5 py-0.5 rounded text-amber-200 font-mono text-xs">{user_id}.db</code>). Zero cross-tenant data leakage, dedicated hill station geofence radar, and full group debt settlement.
+              </p>
+            </div>
+
+            <!-- 4 Core Realtime Features List -->
+            <div class="space-y-3 pt-2">
+              <div class="flex items-center gap-3 text-xs bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/15">
+                <span class="text-lg">🚘</span>
+                <div>
+                  <strong class="text-white block font-bold">Google Maps Real-Time Navigation</strong>
+                  <span class="text-blue-100 text-[11px]">3D bearing chevron, camera auto-tracking & speech audio turn guidance.</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 text-xs bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/15">
+                <span class="text-lg">⚡</span>
+                <div>
+                  <strong class="text-white block font-bold">Whale Optimizer (WOA) Cost AI</strong>
+                  <span class="text-blue-100 text-[11px]">5-channel constrained metaheuristic predicting fuel, stay, & food.</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 text-xs bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/15">
+                <span class="text-lg">💳</span>
+                <div>
+                  <strong class="text-white block font-bold">Proper Splitwise & Settle Up</strong>
+                  <span class="text-blue-100 text-[11px]">Graph debt minimization with 1-click UPI transfers (GPay / PhonePe).</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 text-xs bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/15">
+                <span class="text-lg">🚨</span>
+                <div>
+                  <strong class="text-white block font-bold">Return-Time Sentinel & SOS Beacon</strong>
+                  <span class="text-blue-100 text-[11px]">Auto-escalates missing hill station check-ins to assigned emergency contact.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative z-10 pt-6 mt-6 border-t border-white/15 flex items-center justify-between text-xs text-blue-100">
+            <span class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Police: 112 • Highway Help: 1033</span>
+            </span>
+            <button onclick="switchTab('plan')" class="text-xs text-amber-300 hover:text-white font-bold underline">
+              Explore as Guest →
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Auth Form Container with Sign In / Register Tabs -->
+        <div class="lg:col-span-6 bg-white border border-[#E8EAED] rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+          <div>
+            <!-- Toggle Tabs: Sign In vs Create Profile -->
+            <div class="flex items-center p-1 bg-[#F1F3F4] rounded-2xl mb-6">
+              <button id="auth-page-tab-login" onclick="showAuthPageTab('login')" class="flex-1 py-2.5 rounded-xl text-xs font-black bg-white text-[#1A73E8] shadow-sm transition-all text-center">
+                🔑 Sign In
+              </button>
+              <button id="auth-page-tab-register" onclick="showAuthPageTab('register')" class="flex-1 py-2.5 rounded-xl text-xs font-black text-[#5F6368] hover:text-[#202124] transition-all text-center">
+                👤 Create Profile
+              </button>
+            </div>
+
+            <!-- TAB 1: SIGN IN FORM -->
+            <div id="auth-page-panel-login" class="space-y-4">
+              <div>
+                <h3 class="text-xl font-extrabold text-[#202124]">Welcome Back</h3>
+                <p class="text-xs text-[#5F6368] mt-1">Sign in to load your isolated database and trips.</p>
+              </div>
+
+              <!-- Quick 1-Click Fast Logins -->
+              <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <span class="text-[10px] font-black uppercase tracking-wider text-[#5F6368] block">Quick 1-Click Demo Accounts:</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <button onclick="quickLoginDemo('manogarbhuvana@gmail.com')" class="px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 text-xs font-bold text-left transition-all col-span-2 flex items-center justify-between">
+                    <span>⚡ Bhuvaneshwari M</span>
+                    <span class="text-[10px] font-mono font-bold bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded">SQL Account</span>
+                  </button>
+                  <button onclick="quickLoginDemo('arun@securetour.ai')" class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1A73E8] text-xs font-bold text-left transition-all flex items-center justify-between">
+                    <span>⚡ Arun Kumar</span>
+                    <span class="text-[9px] font-mono text-[#1557B0]">SQL Account</span>
+                  </button>
+                  <button onclick="quickLoginDemo('priya@securetour.ai')" class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1A73E8] text-xs font-bold text-left transition-all">
+                    ⚡ Priya Sundaram
+                  </button>
+                  <button onclick="quickLoginDemo('karthik@securetour.ai')" class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1A73E8] text-xs font-bold text-left transition-all">
+                    ⚡ Karthik Rajan
+                  </button>
+                  <button onclick="quickLoginDemo('divya@securetour.ai')" class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1A73E8] text-xs font-bold text-left transition-all">
+                    ⚡ Divya Menon
+                  </button>
+                </div>
+              </div>
+
+              <div class="relative flex items-center justify-center my-3">
+                <div class="border-t border-[#E8EAED] w-full"></div>
+                <span class="bg-white px-2.5 text-[10px] uppercase font-bold text-[#80868B] absolute">Or with email</span>
+              </div>
+
+              <!-- Standard Email & Password Form -->
+              <form onsubmit="handleAuthPageLoginForm(event)" class="space-y-3.5">
+                <div>
+                  <label class="text-xs font-bold text-[#3C4043] block mb-1">Email Address</label>
+                  <input id="authpage-login-email" required type="email" placeholder="name@example.com" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-[#3C4043] block mb-1">Password</label>
+                  <input id="authpage-login-password" required type="password" placeholder="••••••••" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md shadow-blue-500/25 transition-all">
+                  Sign In to Account
+                </button>
+              </form>
+            </div>
+
+            <!-- TAB 2: CREATE PROFILE FORM -->
+            <div id="auth-page-panel-register" class="hidden space-y-4">
+              <div>
+                <h3 class="text-xl font-extrabold text-[#202124]">Create Traveler Profile</h3>
+                <p class="text-xs text-[#5F6368] mt-1">Get your personal isolated database with emergency contact protection.</p>
+              </div>
+
+              <form onsubmit="handleAuthPageRegisterForm(event)" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-xs font-bold text-[#3C4043] block mb-1">Full Name</label>
+                    <input id="authpage-reg-name" required type="text" placeholder="e.g. Bhuvaneshwari M" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8]">
+                  </div>
+                  <div>
+                    <label class="text-xs font-bold text-[#3C4043] block mb-1">Mobile Phone</label>
+                    <input id="authpage-reg-phone" required type="tel" placeholder="+91 98401 23456" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8]">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-xs font-bold text-[#3C4043] block mb-1">Email Address</label>
+                  <input id="authpage-reg-email" required type="email" placeholder="you@example.com" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8]">
+                </div>
+
+                <div>
+                  <label class="text-xs font-bold text-[#3C4043] block mb-1">Create Password</label>
+                  <input id="authpage-reg-password" required minlength="6" type="password" placeholder="Minimum 6 characters" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8]">
+                </div>
+
+                <!-- Emergency Contact Subcard -->
+                <div class="p-3 bg-red-50/70 border border-red-200 rounded-2xl space-y-2">
+                  <span class="text-[10px] font-black uppercase tracking-wider text-red-700 block">🚨 Assigned Emergency Contact (For SOS Alerts)</span>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="text-[11px] font-bold text-red-900 block mb-0.5">Contact Name & Relation</label>
+                      <input id="authpage-reg-em-name" required type="text" placeholder="e.g. Father, Sister" class="w-full bg-white border border-red-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#202124]">
+                    </div>
+                    <div>
+                      <label class="text-[11px] font-bold text-red-900 block mb-0.5">Contact Phone</label>
+                      <input id="authpage-reg-em-phone" required type="tel" placeholder="+91 98401 99999" class="w-full bg-white border border-red-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#202124]">
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md transition-all">
+                  Create Profile & Dedicated Database
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+          <div class="pt-4 border-t border-[#F1F3F4] text-center text-xs text-[#5F6368]">
+            Need a quick look first? <button onclick="switchTab('plan')" class="text-[#1A73E8] font-bold hover:underline">Explore as Guest</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- DEDICATED LOGOUT CONFIRMATION PAGE -->
+    <!-- ========================================================================= -->
+    <section id="view-logout" class="tab-view hidden space-y-6">
+      <div class="max-w-xl mx-auto bg-white border border-[#E8EAED] rounded-3xl p-8 shadow-xl text-center space-y-6 my-8">
+        
+        <!-- Animated Success Check Badge -->
+        <div class="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 border-4 border-emerald-200 flex items-center justify-center font-black text-3xl mx-auto shadow-md">
+          ✓
+        </div>
+
+        <div class="space-y-2">
+          <span class="text-[10px] font-black uppercase tracking-widest text-[#1E8E3E] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            SESSION SECURELY TERMINATED
+          </span>
+          <h2 class="text-2xl font-black text-[#202124] tracking-tight">You Have Successfully Signed Out</h2>
+          <p class="text-xs text-[#5F6368] max-w-md mx-auto leading-relaxed">
+            Your dedicated SQLite database session has been safely closed and sealed. All session tokens have been cleared from this browser.
+          </p>
+        </div>
+
+        <!-- Security Checkpoints Card -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-left space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[#5F6368] flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Isolated Database Session</span>
+            </span>
+            <strong class="text-emerald-700 font-bold">Closed & Sealed</strong>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[#5F6368] flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Emergency Sentinel Telemetry</span>
+            </span>
+            <strong class="text-slate-700 font-semibold">Deactivated</strong>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[#5F6368] flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Device Browser Tokens</span>
+            </span>
+            <strong class="text-emerald-700 font-bold">Purged</strong>
+          </div>
+        </div>
+
+        <!-- 3 Action CTAs -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button onclick="switchTab('login'); showAuthPageTab('login')" class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md shadow-blue-500/25 transition-all">
+            🔑 Sign In Again
+          </button>
+          <button onclick="switchTab('login'); showAuthPageTab('register')" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-slate-50 text-[#3C4043] border border-slate-300 font-bold text-xs transition-all">
+            👤 Create New Profile
+          </button>
+          <button onclick="switchTab('plan')" class="w-full sm:w-auto px-4 py-3 rounded-2xl text-xs text-[#5F6368] hover:text-[#202124] font-bold">
+            Explore as Guest →
+          </button>
+        </div>
+
+      </div>
+    </section>
 
     <!-- ========================================================================= -->
     <!-- TAB 1: BUDGET AI PREDICTOR (WOA) -->
@@ -305,8 +667,9 @@
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="text-xs font-bold text-[#3C4043]">Source City</label>
-                <button type="button" onclick="useLiveBrowserLocation()" class="text-[10px] font-extrabold text-[#1A73E8] hover:underline flex items-center gap-0.5" title="Use your actual device GPS location">
-                  <span>📍 GPS</span>
+                <button type="button" onclick="useLiveBrowserLocation()" class="text-[11px] font-extrabold text-[#1A73E8] bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 flex items-center gap-1 transition-all" title="Acquire your actual live device GPS location">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#1A73E8] animate-ping"></span>
+                  <span>📍 Use My Live Location</span>
                 </button>
               </div>
               <input id="woa-source" type="text" value="Chennai" oninput="onSourceOrDestInput()" placeholder="e.g. Chennai" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-sm font-bold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
@@ -330,9 +693,11 @@
                 <span id="route-distance-summary" class="font-extrabold text-[#1557B0]">540.0 km • ~9.5 hrs driving</span>
               </div>
             </div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
-              Auto-Synced
-            </span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="switchTab('travel'); if(!state.liveTracking) toggleLiveGPSNavigation();" class="text-[10px] font-black uppercase tracking-wider bg-[#1A73E8] hover:bg-[#1557B0] text-white px-2.5 py-1 rounded-xl shadow-sm transition-all flex items-center gap-1" title="Open Google Maps and start live navigation from your location">
+                <span>🗺️ Live Directions →</span>
+              </button>
+            </div>
           </div>
 
           <!-- Quick Preset Corridors (Instant 1-Click Dynamic Test) -->
@@ -509,28 +874,38 @@
             </button>
           </div>
 
-          <!-- Controls: Simulate Drive, Reset, Explanatory Map Layer Switcher -->
+          <!-- Controls: Live GPS Navigation, Simulate Route Drive, Reset, and Zero-Watermark Layer Switcher -->
           <div class="flex flex-wrap items-center gap-2">
             
-            <button id="btn-toggle-sim" onclick="toggleDriveSimulation()" class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white shadow-md shadow-blue-500/20 transition-all">
-              <svg id="sim-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <span id="sim-text">Simulate Live Drive</span>
+            <!-- Real-Time Device GPS Navigation Button -->
+            <button id="btn-live-nav-track" onclick="toggleLiveGPSNavigation()" class="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 transition-all">
+              <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+              <span id="live-nav-track-text">📍 Live GPS Navigation (Real-Time)</span>
+            </button>
+
+            <!-- Route Drive Simulation Button -->
+            <button id="btn-toggle-sim" onclick="toggleDriveSimulation()" class="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white shadow-md shadow-blue-500/20 transition-all">
+              <svg id="sim-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span id="sim-text">▶ Simulate Route Drive</span>
             </button>
             
-            <button onclick="resetSimulation()" class="p-2.5 rounded-xl bg-[#F1F3F4] hover:bg-[#E8EAED] text-[#3C4043] transition-colors" title="Reset Car to Origin">
+            <!-- Reset Button -->
+            <button onclick="resetSimulation()" class="p-2 rounded-xl bg-[#F1F3F4] hover:bg-[#E8EAED] text-[#3C4043] transition-colors" title="Reset Car to Origin">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
 
-            <!-- Live Device GPS Locator Button (HTML5 Geolocation) -->
-            <button onclick="useLiveBrowserLocation()" id="btn-live-gps" class="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#1A73E8] border border-blue-200 shadow-sm transition-all" title="Center map on your real live device GPS location">
-              <span class="w-2.5 h-2.5 rounded-full bg-[#1A73E8] animate-ping"></span>
-              <span id="live-gps-btn-text">📍 Use My Live GPS</span>
-            </button>
-
-            <!-- Pure Google Maps Layer Badge (Clean Street Navigation Only) -->
-            <div class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F1F3F4] text-[#202124] text-xs font-bold border border-[#DADCE0]">
-              <span class="w-2 h-2 rounded-full bg-[#1E8E3E]"></span>
-              <span>Google Maps View</span>
+            <!-- Authentic Real Map Layer Switcher (100% Free & Zero Watermarks) -->
+            <div class="flex items-center p-1 bg-[#F1F3F4] rounded-xl border border-slate-200 text-xs font-bold">
+              <button id="layer-btn-google" onclick="switchMapLayer('google')" class="px-2.5 py-1 rounded-lg bg-white text-[#1A73E8] shadow-sm font-bold transition-all flex items-center gap-1" title="Real Google Maps Street tiles">
+                <span class="w-2 h-2 rounded-full bg-[#1E8E3E]"></span>
+                <span>Google Maps</span>
+              </button>
+              <button id="layer-btn-osm" onclick="switchMapLayer('osm')" class="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] font-medium transition-all flex items-center gap-1" title="OpenStreetMap Standard tiles (no watermarks)">
+                <span>OpenStreetMap</span>
+              </button>
+              <button id="layer-btn-esri" onclick="switchMapLayer('esri')" class="px-2.5 py-1 rounded-lg text-[#5F6368] hover:text-[#202124] font-medium transition-all flex items-center gap-1" title="Esri World Streets">
+                <span>Esri Streets</span>
+              </button>
             </div>
           </div>
         </div>
@@ -588,26 +963,101 @@
       <!-- MAIN NAVIGATION DISPLAY: GOOGLE MAPS + TURN-BY-TURN DIRECTIONS DRAWER -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        <!-- Left: Interactive Google-Style Map -->
+        <!-- Left: Interactive Google Maps Navigation Display -->
         <div class="lg:col-span-8 bg-white border border-[#E8EAED] rounded-3xl p-3 shadow-sm card-hover-3d">
-          <div class="relative h-[560px] w-full rounded-2xl overflow-hidden border border-[#DADCE0]">
+          <div class="relative h-[600px] w-full rounded-2xl overflow-hidden border border-[#DADCE0]">
             <div id="route-map" class="h-full w-full"></div>
             
-            <!-- Live Next Turn Floating HUD (Google Maps style) -->
-            <div id="floating-next-turn" class="absolute top-4 left-4 z-[400] max-w-sm bg-[#202124]/90 text-white backdrop-blur-md rounded-2xl p-3.5 shadow-2xl border border-slate-700 flex items-center gap-3">
-              <div id="hud-turn-icon" class="w-10 h-10 rounded-xl bg-[#1A73E8] text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow">
-                ⬆️
+            <!-- GOOGLE MAPS SIGNATURE TOP GREEN MANEUVER CARD (#1E8E3E) -->
+            <div id="gmap-turn-hud" class="absolute top-3 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-md z-[400] bg-[#1E8E3E] text-white rounded-2xl p-3.5 shadow-2xl border border-emerald-500/50 backdrop-blur-md flex items-center gap-3.5 transition-all">
+              <div id="gmap-hud-icon-box" class="w-12 h-12 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center font-black text-2xl flex-shrink-0 shadow-inner">
+                <span id="gmap-hud-turn-icon">⬆️</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p id="hud-turn-dist" class="text-xs font-bold text-blue-300">In 500 meters</p>
-                <p id="hud-turn-text" class="text-xs font-extrabold text-white truncate">Grand Southern Trunk Rd (NH-48)</p>
+                <div class="flex items-baseline gap-2">
+                  <span id="gmap-hud-dist" class="text-xl sm:text-2xl font-black text-white tracking-tight">500 m</span>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white/25 text-emerald-100 tracking-wider">NEXT TURN</span>
+                </div>
+                <p id="gmap-hud-road" class="text-xs font-bold text-white truncate mt-0.5 leading-snug">Grand Southern Trunk Rd (NH-48)</p>
+                <div id="gmap-hud-next-step" class="text-[10px] text-emerald-200 mt-1 flex items-center gap-1.5 truncate">
+                  <span class="opacity-80">Then:</span>
+                  <span id="gmap-hud-next-text" class="font-bold truncate">continue 14 km towards Chengalpattu</span>
+                </div>
               </div>
+            </div>
+
+            <!-- GOOGLE MAPS FLOATING CONTROLS (Top Right of Map) -->
+            <div class="absolute top-3 right-3 z-[400] flex flex-col gap-2 items-end">
+              <!-- Voice Guidance Toggle -->
+              <button id="btn-voice-toggle" onclick="toggleVoiceGuidance()" class="p-2.5 rounded-xl bg-white/95 hover:bg-white text-[#202124] shadow-lg border border-slate-200 backdrop-blur-md flex items-center gap-1.5 text-xs font-bold transition-all hover:scale-105" title="Toggle Voice Driving Navigation Prompts">
+                <span id="voice-icon" class="text-base">🔊</span>
+                <span id="voice-label" class="hidden sm:inline">Voice ON</span>
+              </button>
+
+              <!-- Recenter Map Button -->
+              <button id="btn-recenter-map" onclick="recenterMapOnVehicle()" class="px-3 py-2 rounded-xl bg-white/95 hover:bg-white text-[#1A73E8] shadow-lg border border-slate-200 backdrop-blur-md flex items-center gap-1.5 text-xs font-extrabold transition-all hover:scale-105" title="Center map on vehicle and follow route">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+                <span>Recenter</span>
+              </button>
+
+              <!-- Speed Limit Badge -->
+              <div class="w-11 h-11 rounded-full bg-white border-[3px] border-[#D93025] flex flex-col items-center justify-center shadow-lg pointer-events-none" title="Highway Speed Limit">
+                <span class="text-[8px] font-black text-[#5F6368] leading-none">LIMIT</span>
+                <span class="text-xs font-black text-[#202124] leading-none mt-0.5">80</span>
+              </div>
+            </div>
+
+            <!-- GOOGLE MAPS BOTTOM DRIVING HUD (Bottom Navigation Bar) -->
+            <div id="gmap-bottom-nav-bar" class="absolute bottom-3 left-3 right-3 z-[400] bg-white/95 backdrop-blur-md border border-[#E8EAED] rounded-2xl p-3 sm:p-3.5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 transition-all">
+              
+              <!-- Left: ETA & Remaining Distance / Clock -->
+              <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="flex items-baseline gap-1">
+                  <span id="gmap-bottom-eta" class="text-2xl sm:text-3xl font-black text-[#1E8E3E]">18</span>
+                  <span class="text-xs font-black text-[#1E8E3E] uppercase">min</span>
+                </div>
+                <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <div class="text-xs font-extrabold text-[#202124]">
+                    <span id="gmap-bottom-remain-km">14.2 km</span> • <span id="gmap-bottom-arrival-clock">4:45 PM</span>
+                  </div>
+                  <span class="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Fastest Route • Google Live Nav</span>
+                </div>
+              </div>
+
+              <!-- Center: Live Speedometer Gauge -->
+              <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/80 border border-slate-200">
+                <div class="w-7 h-7 rounded-full bg-blue-100 text-[#1A73E8] flex items-center justify-center font-bold text-xs">
+                  🏎️
+                </div>
+                <div>
+                  <span id="gmap-bottom-speed" class="text-base font-black text-[#202124]">65</span>
+                  <span class="text-[10px] font-bold text-[#5F6368]">km/h</span>
+                </div>
+              </div>
+
+              <!-- Right: Driving Action Controls -->
+              <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button id="btn-gmap-drive-toggle" onclick="toggleGMapBottomNav()" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-1.5 transition-all">
+                  <svg id="gmap-drive-btn-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span id="gmap-drive-btn-text">Start GMap Navigation</span>
+                </button>
+
+                <button onclick="resetSimulation()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors" title="Reset Car to Start">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+
+                <button onclick="stopSimulation()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-[#D93025] transition-colors" title="Exit Driving Navigation">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
 
         <!-- Right: Turn-by-Turn Driving Directions Drawer (Google Maps style) -->
-        <div class="lg:col-span-4 bg-white border border-[#E8EAED] rounded-3xl p-5 shadow-sm flex flex-col h-[584px]">
+        <div class="lg:col-span-4 bg-white border border-[#E8EAED] rounded-3xl p-5 shadow-sm flex flex-col h-[624px]">
           
           <!-- Direction Drawer Header -->
           <div class="border-b border-[#F1F3F4] pb-3 mb-3">
@@ -762,7 +1212,7 @@
                 <span>💳 Splitwise Graph Minimization Algorithm</span>
               </span>
               <span id="trip-db-isolation-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/60 text-emerald-200 text-[11px] font-mono font-bold border border-emerald-400/30">
-                🔒 Private User DB: usr-fcbc1695.db
+                🗄️ Unified SQL DB: securetour.db
               </span>
             </div>
             <h2 id="splitwise-trip-title" class="text-2xl font-extrabold tracking-tight">Proper Splitwise: Effortless Group Expense Settlement</h2>
@@ -834,6 +1284,141 @@
       </div>
     </section>
 
+    <!-- ========================================================================= -->
+    <!-- TAB 6: DEDICATED TRAVELER PROFILE & DATABASE SECURITY -->
+    <!-- ========================================================================= -->
+    <section id="view-profile" class="tab-view hidden space-y-6">
+      
+      <!-- Profile Hero Header -->
+      <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-lg relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 relative z-10">
+          <div class="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+            <div id="profile-page-avatar" class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#1A73E8] to-cyan-400 text-white flex items-center justify-center font-black text-3xl shadow-xl shadow-blue-500/25 border-2 border-white/20">
+              B
+            </div>
+            <div>
+              <div class="flex items-center gap-2.5 justify-center sm:justify-start">
+                <h2 id="profile-page-fullname" class="text-2xl font-black tracking-tight">Bhuvaneshwari M</h2>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  ● Verified Session
+                </span>
+              </div>
+              <p id="profile-page-email" class="text-xs text-slate-300 mt-1 font-medium">manogarbhuvana@gmail.com</p>
+              <p id="profile-page-phone" class="text-xs text-slate-300 font-mono mt-0.5">+91 63800 03117</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="handleLogout()" class="px-4 py-2.5 rounded-2xl bg-red-600/90 hover:bg-red-600 text-white font-extrabold text-xs shadow-md border border-red-400/30 transition-all flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span>Sign Out of Account</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Details 3-Column Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- CARD 1: UNIFIED SQL RELATIONAL DATABASE -->
+        <div class="bg-white border border-[#E8EAED] rounded-3xl p-6 shadow-sm card-hover-3d space-y-4">
+          <div class="flex items-center justify-between border-b border-[#F1F3F4] pb-3">
+            <div class="flex items-center gap-2">
+              <span class="p-2 rounded-xl bg-blue-50 text-[#1A73E8]">🗄️</span>
+              <h3 class="text-sm font-extrabold text-[#202124]">Unified SQL Relational Database</h3>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Real-Time Sync</span>
+          </div>
+
+          <div class="space-y-2.5 text-xs">
+            <div>
+              <span class="text-[#5F6368] text-[11px] block">Database Engine:</span>
+              <strong id="profile-db-filename" class="text-[#202124] font-mono text-xs block">securetour.db (SQLite Relational SQL)</strong>
+            </div>
+            <div>
+              <span class="text-[#5F6368] text-[11px] block">Database Path:</span>
+              <code id="profile-db-path" class="text-[11px] text-[#1A73E8] bg-blue-50 px-2 py-1 rounded block truncate font-mono">backend/data/securetour.db</code>
+            </div>
+            <div>
+              <span class="text-[#5F6368] text-[11px] block">Active SQL Relational Tables:</span>
+              <span class="font-bold text-[#1E8E3E]">users, trips, trip_members, expenses, settlements, return_contracts, trip_invitations</span>
+            </div>
+          </div>
+
+          <button onclick="testDbIntegrity()" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#202124] font-bold text-xs transition-colors flex items-center justify-center gap-1.5">
+            <span>✓ Check SQL Database Health</span>
+          </button>
+        </div>
+
+        <!-- CARD 2: ASSIGNED EMERGENCY CONTACT -->
+        <div class="bg-white border border-[#E8EAED] rounded-3xl p-6 shadow-sm card-hover-3d space-y-4">
+          <div class="flex items-center justify-between border-b border-[#F1F3F4] pb-3">
+            <div class="flex items-center gap-2">
+              <span class="p-2 rounded-xl bg-red-50 text-red-600">🚨</span>
+              <h3 class="text-sm font-extrabold text-[#202124]">Assigned Emergency SOS Contact</h3>
+            </div>
+          </div>
+
+          <div class="bg-red-50/70 border border-red-200 rounded-2xl p-3.5 space-y-2 text-xs">
+            <div class="flex justify-between items-baseline">
+              <span class="text-red-900 font-bold">Contact Name:</span>
+              <strong id="profile-card-em-name" class="text-red-950 font-black text-sm">father</strong>
+            </div>
+            <div class="flex justify-between items-baseline">
+              <span class="text-red-900 font-bold">Mobile Phone:</span>
+              <strong id="profile-card-em-phone" class="font-mono text-red-950 font-bold text-xs">+91 63800 03117</strong>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-[#5F6368]">
+            Automated SMS & WhatsApp SOS beacons with live GPS coordinates are linked to this phone number.
+          </p>
+
+          <div class="flex gap-2">
+            <button onclick="openSOSModal()" class="w-full py-2.5 rounded-xl bg-[#D93025] hover:bg-[#C5221F] text-white font-extrabold text-xs shadow-sm transition-all text-center">
+              🚨 Trigger Test SOS Beacon
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 3: TRIP SUMMARY & ACTIONS -->
+        <div class="bg-white border border-[#E8EAED] rounded-3xl p-6 shadow-sm card-hover-3d space-y-4">
+          <div class="flex items-center justify-between border-b border-[#F1F3F4] pb-3">
+            <div class="flex items-center gap-2">
+              <span class="p-2 rounded-xl bg-blue-50 text-[#1A73E8]">🗺️</span>
+              <h3 class="text-sm font-extrabold text-[#202124]">Active Trip Linked</h3>
+            </div>
+            <span class="text-[10px] font-bold text-[#1A73E8] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Active</span>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between text-[#3C4043]">
+              <span>Trip Title:</span>
+              <strong id="profile-trip-title" class="text-[#202124]">Travel Expedition</strong>
+            </div>
+            <div class="flex justify-between text-[#3C4043]">
+              <span>Route Corridor:</span>
+              <strong id="profile-trip-corridor" class="text-[#202124]">Chennai ➔ Ooty</strong>
+            </div>
+            <div class="flex justify-between text-[#3C4043]">
+              <span>Splitwise Members:</span>
+              <strong class="text-[#1A73E8]">4 Friends</strong>
+            </div>
+          </div>
+
+          <div class="pt-2 flex flex-col gap-2">
+            <button onclick="switchTab('plan')" class="w-full py-2.5 rounded-xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-bold text-xs shadow-sm transition-all text-center">
+              Open Budget Planner
+            </button>
+            <button onclick="switchTab('travel')" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#202124] font-bold text-xs transition-colors text-center">
+              Open Google Maps Navigation
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
   <!-- ========================================================================= -->
@@ -852,6 +1437,10 @@
       <div class="space-y-1.5">
         <p class="text-[11px] font-bold uppercase tracking-wider text-[#5F6368]">Quick Demo Logins (1-Click Test):</p>
         <div class="grid grid-cols-2 gap-2">
+          <button onclick="quickLoginDemo('manogarbhuvana@gmail.com')" class="px-2.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold text-left transition-colors flex items-center justify-between col-span-2 border border-purple-200">
+            <span>⚡ Bhuvaneshwari M</span>
+            <span class="text-[10px] font-mono bg-purple-200/60 px-1.5 py-0.5 rounded text-purple-800 font-bold">SQL Account</span>
+          </button>
           <button onclick="quickLoginDemo('arun@securetour.ai')" class="px-2.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1A73E8] text-xs font-bold text-left transition-colors">
             ⚡ Arun Kumar
           </button>
@@ -1164,6 +1753,87 @@
         </button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE GROUP TRIP & INVITE FRIENDS -->
+  <div id="create-group-trip-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="bg-white border border-[#DADCE0] rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto steps-scroll">
+      <div class="flex items-center justify-between border-b border-[#F1F3F4] pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-100 text-[#1A73E8] flex items-center justify-center text-base">
+            ✈️
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-[#202124]">Create Collaborative Group Trip</h3>
+            <p class="text-[11px] text-[#5F6368]">Live GPS navigation, AI budget & shared Splitwise ledger</p>
+          </div>
+        </div>
+        <button onclick="closeCreateGroupTripModal()" class="text-[#5F6368] hover:text-[#202124] text-lg font-bold">✕</button>
+      </div>
+
+      <form onsubmit="submitCreateGroupTrip(event)" class="space-y-4">
+        <!-- Trip Name -->
+        <div>
+          <label class="text-xs font-bold text-[#3C4043] block mb-1">Trip Name</label>
+          <input id="group-trip-title" required type="text" placeholder="e.g. Goa Beach Roadtrip 2026, Ooty Hill Expedition" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+        </div>
+
+        <!-- Starting Location & Destination -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-[#3C4043]">Starting Point</label>
+              <button type="button" onclick="useLiveLocationForGroupTripSource()" class="text-[10px] font-extrabold text-[#1A73E8] hover:underline flex items-center gap-0.5">
+                <span>📍 My GPS</span>
+              </button>
+            </div>
+            <input id="group-trip-source" required type="text" placeholder="e.g. Chennai or Live GPS" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+            <input id="group-trip-lat" type="hidden" value="">
+            <input id="group-trip-lng" type="hidden" value="">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#3C4043] block mb-1">Destination</label>
+            <input id="group-trip-dest" required type="text" placeholder="e.g. Goa, Ooty, Coorg, Manali" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+          </div>
+        </div>
+
+        <!-- Budget & Duration -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-bold text-[#3C4043] block mb-1">Target Budget (₹)</label>
+            <input id="group-trip-budget" type="number" min="1000" step="500" value="45000" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#3C4043] block mb-1">Duration (Days)</label>
+            <input id="group-trip-duration" type="number" min="1" max="30" value="4" class="w-full bg-[#F8F9FA] border border-[#DADCE0] rounded-xl px-3 py-2 text-xs font-semibold text-[#202124] focus:outline-none focus:border-[#1A73E8] focus:bg-white transition-all">
+          </div>
+        </div>
+
+        <!-- Invite Registered Friends Section -->
+        <div class="border-t border-[#F1F3F4] pt-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <label class="text-xs font-bold text-[#3C4043] block">Invite Registered Users to Trip</label>
+              <p class="text-[11px] text-[#5F6368]">Select friends who have an account on this platform. They will receive an invitation to accept and join.</p>
+            </div>
+            <span class="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Real Accounts</span>
+          </div>
+
+          <div id="invite-friends-directory-list" class="space-y-1.5 max-h-40 overflow-y-auto steps-scroll border border-[#DADCE0] rounded-2xl p-2.5 bg-[#F8F9FA]">
+            <p class="text-xs text-[#5F6368] text-center py-2">Loading user directory...</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeCreateGroupTripModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-[#3C4043] hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-3 rounded-2xl bg-[#1A73E8] hover:bg-[#1557B0] text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
+            <span>🚀 Create Trip & Send Invites</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

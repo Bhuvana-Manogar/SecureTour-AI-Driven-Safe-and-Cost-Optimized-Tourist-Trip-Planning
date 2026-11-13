@@ -99,3 +99,18 @@ class SOSBroadcastRequest(BaseModel):
     emergency_contact_name: Optional[str] = None
     emergency_contact_phone: Optional[str] = None
     trip_name: Optional[str] = "Group Travel Shield"
+
+
+class GroupTripCreate(BaseModel):
+    title: str
+    source: str = "Chennai"
+    destination: str = "Ooty"
+    target_budget: float = 48000.0
+    duration_days: int = 4
+    start_lat: Optional[float] = None
+    start_lng: Optional[float] = None
+    invited_emails: Optional[List[str]] = []
+
+
+class InvitationRespond(BaseModel):
+    action: str  # 'accept' or 'decline'

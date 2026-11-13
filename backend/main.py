@@ -29,7 +29,8 @@ from backend.schemas import (
     UserRegister, UserLogin, AuthResponse, UserResponse,
     TripCreate, TripUpdateLocation, CostOptimizationRequest,
     ReturnContractCreate, SafeCheckinRequest, ExpenseCreate,
-    MarkSettlementPaid, SOSBroadcastRequest
+    MarkSettlementPaid, SOSBroadcastRequest,
+    GroupTripCreate, InvitationRespond
 )
 from backend.services.woa_cost_optimizer import WhaleCostOptimizer
 from backend.services.hotel_safety_classifier import HotelSafetyScorer
@@ -201,25 +202,29 @@ def get_demo_users():
 @app.get("/api/user/active-trip")
 def get_user_active_trip(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     """
-    Returns the active trip for the logged-in user from their isolated database.
-    Guarantees that each user sees only THEIR group, THEIR expenses, and THEIR return contract!
+    Returns the active trip for the logged-in user from the unified SQL database.
+    Dynamically loads the user's active trip, members, and Splitwise ledger.
     """
-    user_id = user["id"] if user else "usr-1"
-    user_name = user["full_name"] if user else "Arun Kumar"
+    is_authenticated = bool(user and user.get("id"))
+    user_id = user["id"] if is_authenticated else "usr-1"
+    user_name = user["full_name"] if is_authenticated else "Guest Traveler"
     
     conn = get_user_db_connection(user_id, user_name)
     cursor = conn.cursor()
     
-    cursor.execute("SELECT * FROM trips ORDER BY created_at DESC LIMIT 1")
+    cursor.execute("""
+    SELECT t.* FROM trips t
+    JOIN trip_members tm ON t.id = tm.trip_id
+    WHERE tm.user_id = ? OR LOWER(tm.member_name) = LOWER(?) OR t.owner_id = ?
+    ORDER BY t.created_at DESC LIMIT 1
+    """, (user_id, user_name, user_id))
     trip_row = cursor.fetchone()
     
     if not trip_row:
-        init_isolated_user_db(conn, user_id, user_name)
         cursor.execute("SELECT * FROM trips ORDER BY created_at DESC LIMIT 1")
         trip_row = cursor.fetchone()
 
     trip_dict = dict(trip_row)
-    trip_dict["owner_name"] = user_name
     
     cursor.execute("SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (trip_dict["id"],))
     members = [dict(m) for m in cursor.fetchall()]
@@ -229,8 +234,9 @@ def get_user_active_trip(user: Optional[Dict[str, Any]] = Depends(get_optional_u
     return {
         "trip": trip_dict,
         "members": members,
-        "is_owner": trip_dict.get("owner_id") == user_id,
-        "user_db": f"{user_id}.db"
+        "is_owner": is_authenticated and (trip_dict.get("owner_id") == user_id),
+        "is_authenticated": is_authenticated,
+        "user_db": "securetour.db"
     }
 
 
@@ -273,20 +279,219 @@ def remove_trip_member(trip_id: str, member_name: str, user: Optional[Dict[str, 
     return {"message": f"{member_name} removed from trip"}
 
 
+@app.get("/api/users/directory")
+def get_users_directory(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    """Returns directory of registered users on SecureTour AI to add friends to group trips."""
+    conn = get_auth_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, email, full_name, phone FROM users ORDER BY full_name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    current_email = (user.get("email") if user else "").lower()
+    users_list = []
+    for r in rows:
+        d = dict(r)
+        d["is_self"] = (d["email"].lower() == current_email)
+        users_list.append(d)
+    return {"users": users_list}
+
+
+@app.post("/api/trips/create-group")
+def create_group_trip(req: GroupTripCreate, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    """
+    Creates a new named group trip, initializes its route, budget, and isolated Splitwise ledger,
+    and sends invitations to registered user accounts in real time.
+    """
+    user_id = user["id"] if user else "usr-1"
+    user_name = user["full_name"] if user else "Arun Kumar"
+    user_email = user["email"] if user else "arun@securetour.ai"
+    
+    trip_id = f"trip-{uuid.uuid4().hex[:8]}"
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # 1. Create in Unified SQL Database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    start_lat = req.start_lat or 13.0827
+    start_lng = req.start_lng or 80.2707
+    
+    cursor.execute("""
+    INSERT INTO trips (id, title, source, destination, group_size, target_budget, owner_id, status, current_lat, current_lng, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?)
+    """, (
+        trip_id, req.title, req.source, req.destination,
+        1, req.target_budget,
+        user_id, start_lat, start_lng, now
+    ))
+    
+    # Add creator as ORGANIZER
+    cursor.execute("""
+    INSERT INTO trip_members (trip_id, user_id, member_name, role, joined_at)
+    VALUES (?, ?, ?, 'ORGANIZER', ?)
+    """, (trip_id, user_id, user_name, now))
+    
+    # Default return contract
+    default_return = (datetime.now(timezone.utc) + timedelta(days=req.duration_days or 4)).replace(hour=18, minute=0, second=0).isoformat()
+    cursor.execute("""
+    INSERT OR REPLACE INTO return_contracts (trip_id, expected_return_time, is_safe_checked_in, last_known_lat, last_known_lng, notes, updated_at)
+    VALUES (?, ?, 0, ?, ?, 'Default group return target 18:00', ?)
+    """, (trip_id, default_return, start_lat, start_lng, now))
+    
+    # 2. Process Invitations in Central SQL DB
+    invited_users_count = 0
+    if req.invited_emails:
+        for email in req.invited_emails:
+            clean_email = email.strip().lower()
+            if not clean_email or clean_email == user_email.lower():
+                continue
+                
+            cursor.execute("SELECT id, full_name FROM users WHERE LOWER(email) = ?", (clean_email,))
+            u_row = cursor.fetchone()
+            to_user_id = u_row["id"] if u_row else None
+            to_user_name = u_row["full_name"] if u_row else clean_email.split('@')[0].capitalize()
+            
+            inv_id = f"inv-{uuid.uuid4().hex[:8]}"
+            cursor.execute("""
+            INSERT INTO trip_invitations (id, trip_id, trip_title, source, destination, from_user_id, from_user_name, to_user_email, to_user_id, to_user_name, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
+            """, (
+                inv_id, trip_id, req.title, req.source, req.destination,
+                user_id, user_name, clean_email, to_user_id, to_user_name, now
+            ))
+            
+            # Record in trip_members as INVITED
+            cursor.execute("""
+            INSERT OR IGNORE INTO trip_members (trip_id, user_id, member_name, role, joined_at)
+            VALUES (?, ?, ?, 'INVITED', ?)
+            """, (trip_id, to_user_id or f"inv-{uuid.uuid4().hex[:4]}", to_user_name, now))
+            
+            invited_users_count += 1
+            
+    cursor.execute("UPDATE trips SET group_size = (SELECT COUNT(*) FROM trip_members WHERE trip_id = ?) WHERE id = ?", (trip_id, trip_id))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "success": True,
+        "trip_id": trip_id,
+        "title": req.title,
+        "source": req.source,
+        "destination": req.destination,
+        "invited_count": invited_users_count,
+        "message": f"Group Trip '{req.title}' created! {invited_users_count} invitations sent."
+    }
+
+
+@app.get("/api/trips/invitations")
+def get_user_invitations(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    """Returns all pending trip invitations for the logged-in user."""
+    if not user or not user.get("email"):
+        return {"invitations": []}
+        
+    user_email = user["email"].strip().lower()
+    auth_conn = get_auth_db_connection()
+    auth_cur = auth_conn.cursor()
+    auth_cur.execute("""
+    SELECT * FROM trip_invitations WHERE LOWER(to_user_email) = ? AND status = 'PENDING' ORDER BY created_at DESC
+    """, (user_email,))
+    rows = auth_cur.fetchall()
+    invites = [dict(r) for r in rows]
+    auth_conn.close()
+    return {"invitations": invites}
+
+
+@app.post("/api/trips/invitations/{invitation_id}/respond")
+def respond_to_trip_invitation(invitation_id: str, payload: InvitationRespond, user: Dict[str, Any] = Depends(get_current_user)):
+    """Accepts or declines an invitation to join a group trip."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM trip_invitations WHERE id = ?", (invitation_id,))
+    inv_row = cursor.fetchone()
+    if not inv_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Invitation not found")
+        
+    inv = dict(inv_row)
+    now = datetime.now(timezone.utc).isoformat()
+    action = payload.action.lower()
+    
+    if action == "accept":
+        cursor.execute("UPDATE trip_invitations SET status = 'ACCEPTED' WHERE id = ?", (invitation_id,))
+        
+        # Insert or update in trip_members for this trip
+        cursor.execute("""
+        UPDATE trip_members SET role = 'MEMBER', user_id = ?, joined_at = ?
+        WHERE trip_id = ? AND (LOWER(member_name) = LOWER(?) OR user_id = ?)
+        """, (user["id"], now, inv["trip_id"], user["full_name"], user["id"]))
+        
+        cursor.execute("SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?", (inv["trip_id"], user["id"]))
+        if not cursor.fetchone():
+            cursor.execute("""
+            INSERT INTO trip_members (trip_id, user_id, member_name, role, joined_at)
+            VALUES (?, ?, ?, 'MEMBER', ?)
+            """, (inv["trip_id"], user["id"], user["full_name"], now))
+            
+        cursor.execute("UPDATE trips SET group_size = (SELECT COUNT(*) FROM trip_members WHERE trip_id = ?) WHERE id = ?", (inv["trip_id"], inv["trip_id"]))
+        conn.commit()
+        conn.close()
+        return {"success": True, "message": f"✓ You have accepted and joined '{inv['trip_title']}'!"}
+        
+    elif action == "decline":
+        cursor.execute("UPDATE trip_invitations SET status = 'DECLINED' WHERE id = ?", (invitation_id,))
+        conn.commit()
+        conn.close()
+        return {"success": True, "message": "Invitation declined."}
+    else:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'accept' or 'decline'.")
+
+
+@app.post("/api/user/switch-trip/{trip_id}")
+def switch_user_active_trip(trip_id: str, user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
+    """Switches the active trip context for the user and loads its specific route and Splitwise ledger."""
+    conn = resolve_user_db_conn(user, trip_id)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM trips WHERE id = ?", (trip_id,))
+    t_row = cursor.fetchone()
+    if not t_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Trip not found in user database")
+        
+    trip_dict = dict(t_row)
+    cursor.execute("SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (trip_id,))
+    members = [dict(m) for m in cursor.fetchall()]
+    conn.close()
+    
+    return {
+        "success": True,
+        "trip": trip_dict,
+        "members": members,
+        "message": f"Switched to '{trip_dict['title']}'"
+    }
+
+
 @app.get("/api/trips")
 def list_trips(user: Optional[Dict[str, Any]] = Depends(get_optional_user)):
     user_id = user["id"] if user else "usr-1"
     user_name = user["full_name"] if user else "Arun Kumar"
     conn = get_user_db_connection(user_id, user_name)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM trips ORDER BY created_at DESC")
+    cursor.execute("""
+    SELECT DISTINCT t.* FROM trips t
+    JOIN trip_members tm ON t.id = tm.trip_id
+    WHERE tm.user_id = ? OR LOWER(tm.member_name) = LOWER(?) OR t.owner_id = ?
+    ORDER BY t.created_at DESC
+    """, (user_id, user_name, user_id))
     rows = cursor.fetchall()
     trips = []
     for r in rows:
         t = dict(r)
-        t["owner_name"] = user_name
         cursor.execute("SELECT COUNT(*) FROM trip_members WHERE trip_id = ?", (t["id"],))
         t["member_count"] = cursor.fetchone()[0]
+        cursor.execute("SELECT member_name, role FROM trip_members WHERE trip_id = ? ORDER BY id ASC", (t["id"],))
+        t["members"] = [dict(m) for m in cursor.fetchall()]
         trips.append(t)
     conn.close()
     return {"trips": trips}
@@ -586,13 +791,27 @@ def get_hotel_safety_detail(hotel_id: str):
 
 
 @app.get("/api/routes/distance")
-def get_driving_distance(origin: str = "Chennai", destination: str = "Ooty"):
+def get_driving_distance(
+    origin: str = "Chennai",
+    destination: str = "Ooty",
+    start_lat: Optional[float] = None,
+    start_lng: Optional[float] = None,
+    end_lat: Optional[float] = None,
+    end_lng: Optional[float] = None
+):
     """
     Instantly computes real-world driving distance (km) and travel duration (hrs)
     between ANY two locations in India using OSRM GPS routing.
     """
-    s_lat, s_lng = geocode_city_coords(origin, 13.0827, 80.2707)
-    e_lat, e_lng = geocode_city_coords(destination, 11.4102, 76.6958)
+    if start_lat is not None and start_lng is not None:
+        s_lat, s_lng = float(start_lat), float(start_lng)
+    else:
+        s_lat, s_lng = geocode_city_coords(origin, 13.0827, 80.2707)
+
+    if end_lat is not None and end_lng is not None:
+        e_lat, e_lng = float(end_lat), float(end_lng)
+    else:
+        e_lat, e_lng = geocode_city_coords(destination, 11.4102, 76.6958)
     
     osrm_url = f"http://router.project-osrm.org/route/v1/driving/{s_lng},{s_lat};{e_lng},{e_lat}?overview=false"
     try:
@@ -1011,9 +1230,16 @@ def get_route_and_risk(
     Includes full turn-by-turn driving directions with real road names & hazard warnings.
     Supports any dynamic Indian or global destination.
     """
-    # Resolve Coordinates dynamically
-    s_lat, s_lng = geocode_city_coords(origin, start_lat or 13.0827, start_lng or 80.2707)
-    e_lat, e_lng = geocode_city_coords(destination, end_lat or 11.4102, end_lng or 76.6958)
+    # Resolve Coordinates dynamically - prioritizing real live GPS coords when supplied
+    if start_lat is not None and start_lng is not None:
+        s_lat, s_lng = float(start_lat), float(start_lng)
+    else:
+        s_lat, s_lng = geocode_city_coords(origin, 13.0827, 80.2707)
+
+    if end_lat is not None and end_lng is not None:
+        e_lat, e_lng = float(end_lat), float(end_lng)
+    else:
+        e_lat, e_lng = geocode_city_coords(destination, 11.4102, 76.6958)
 
     # 1. Direct Route via OSRM with steps=true
     osrm_url_direct = f"http://router.project-osrm.org/route/v1/driving/{s_lng},{s_lat};{e_lng},{e_lat}?overview=full&geometries=geojson&steps=true"
